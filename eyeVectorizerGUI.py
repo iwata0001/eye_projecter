@@ -418,20 +418,20 @@ class Application_EVGUI(tkinter.Frame):
 
         self.eyeCol_1 = np.array([100,100,100])
         self.iris_tex = circleTex(self.irisRad, np.array([100,100,100]), self.eyeCol_1, np.array([-0,-0,-0])*70, np.array([0,0,0])*120)
-        cv2.imwrite('iris_tex.png', self.iris_tex)
+        cv2.imwrite('temp_img/iris_tex.png', self.iris_tex)
 
-        self.irisTex = tkinter.PhotoImage(file='iris_tex.png')
+        self.irisTex = tkinter.PhotoImage(file='temp_img/iris_tex.png')
         self.eye_canvas.create_image(2,2,image=self.irisTex,anchor=tkinter.NW)
 
         #self.dispRefImg()
         ref = Image.open('output/_wv_output.png')
         ref.putalpha(128)
         ref = ref.resize((640, 480))
-        ref.save('temp_ref.png')
-        self.touka = tkinter.PhotoImage(file='temp_ref.png')
+        ref.save('temp_img/temp_ref.png')
+        self.touka = tkinter.PhotoImage(file='temp_img/temp_ref.png')
         self.test_canvas.create_image(2,2,image=self.touka,anchor=tkinter.NW,tag="refImg")
 
-        self.touka = tkinter.PhotoImage(file='temp_ref.png')
+        self.touka = tkinter.PhotoImage(file='temp_img/temp_ref.png')
         self.test_canvas.create_image(2,2,image=self.touka,anchor=tkinter.NW,tag="refImg")
 
         self.eye1 = eye(shapeUO, shapeUI, shapeLO, shapeLI, self.N)
@@ -612,15 +612,15 @@ class Application_EVGUI(tkinter.Frame):
         self.eyeCol_1 = np.array([col[0][2], col[0][1], col[0][0]])
 
         self.iris_tex = circleTex(self.irisRad, np.array([0,0,0]), self.eyeCol_1, np.array([-1,-1,-1])*70, np.array([1,1,1])*120)
-        cv2.imwrite('iris_tex.png', self.iris_tex)
+        cv2.imwrite('temp_img/iris_tex.png', self.iris_tex)
 
-        self.irisTex = tkinter.PhotoImage(file='iris_tex.png')
+        self.irisTex = tkinter.PhotoImage(file='temp_img/iris_tex.png')
         self.eye_canvas.create_image(2,2,image=self.irisTex,anchor=tkinter.NW)
 
     def reloadPpl(self):
         self.test_canvas.delete("iris")
 
-        tex = cv2.imread('iris_tex.png')
+        tex = cv2.imread('temp_img/iris_tex.png')
         irisMesh = DmeshLib.mesh(4, 4, 2*self.irisRad+1, 2*self.irisRad+1, tex)
         irisMesh.setHandlesOrg(np.array([[[self.irisRad, 0]], [[2*self.irisRad+1, self.irisRad]], [[self.irisRad, 2*self.irisRad+1]], [[0, self.irisRad]]]))
 
@@ -628,9 +628,9 @@ class Application_EVGUI(tkinter.Frame):
         #irisMesh.setHandlesDfm(np.array([[[320, 0]], [[640, 240]], [[320, 480]], [[0, 240]]]))
         irisMesh.applyHandles()
         dfmTex = irisMesh.deform(w=640, h=480)
-        cv2.imwrite('iris_tex_dfm.png', dfmTex)
+        cv2.imwrite('temp_img/iris_tex_dfm.png', dfmTex)
 
-        self.irisTexDfm = tkinter.PhotoImage(file='iris_tex_dfm.png')
+        self.irisTexDfm = tkinter.PhotoImage(file='temp_img/iris_tex_dfm.png')
         self.test_canvas.create_image(2,2,image=self.irisTexDfm,anchor=tkinter.NW,tag="iris")
         self.test_canvas.tag_lower("iris")
 
@@ -691,20 +691,20 @@ class Application_EVGUI(tkinter.Frame):
         ref = Image.open('data_eyes/' + str(i).zfill(3) + '.png')
         ref.putalpha(128)
         ref = ref.resize((640, 480))
-        ref.save('temp_ref.png')
+        ref.save('temp_img/temp_ref.png')
 
-        self.touka = tkinter.PhotoImage(file='temp_ref.png')
+        self.touka = tkinter.PhotoImage(file='temp_img/temp_ref.png')
         self.test_canvas.create_image(2,2,image=self.touka,anchor=tkinter.NW,tag="refImg")
 
     def updateTransparency(self, event):
         print(event)
         self.test_canvas.delete("refImg")
-        ref = Image.open('temp_ref.png')
+        ref = Image.open('temp_img/temp_ref.png')
         ref.putalpha(self.refTransparency.get())
         ref = ref.resize((640, 480))
-        ref.save('temp_ref.png')
+        ref.save('temp_img/temp_ref.png')
 
-        self.touka = tkinter.PhotoImage(file='temp_ref.png')
+        self.touka = tkinter.PhotoImage(file='temp_img/temp_ref.png')
         self.test_canvas.create_image(2,2,image=self.touka,anchor=tkinter.NW,tag="refImg")
 
     def updateRefItr(self):
@@ -718,8 +718,8 @@ class Application_EVGUI(tkinter.Frame):
             ref = Image.open('output/fitting_img/img_itr'+str(i)+'.png')
             ref.putalpha(128)
             ref = ref.resize((640, 480))
-            ref.save('temp_ref.png')
-            self.touka = tkinter.PhotoImage(file='temp_ref.png')
+            ref.save('temp_img/temp_ref.png')
+            self.touka = tkinter.PhotoImage(file='temp_img/temp_ref.png')
             self.test_canvas.create_image(2,2,image=self.touka,anchor=tkinter.NW,tag="refImg")
 
     def toggleRefVisible(self):

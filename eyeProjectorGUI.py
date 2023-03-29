@@ -125,13 +125,13 @@ class Application(tkinter.Frame): #GUI
 
     def save_canvas(self): #入力を投影して出力を画像で保存
         if self.handleNum == 13:
-            self.test_canvas.postscript(file='out.ps', colormode='color')
-            psimage=Image.open('out.ps')
+            self.test_canvas.postscript(file='temp_img/out.ps', colormode='color')
+            psimage=Image.open('temp_img/out.ps')
 
             print(psimage.size)
-            psimage.save('out.png')
+            psimage.save('temp_img/out.png')
 
-            pngImg = cv2.imread('out.png')
+            pngImg = cv2.imread('temp_img/out.png')
             pngImg = pngImg[2:362, 2:482]
             pngImg = cv2.resize(pngImg, (640,480))
             print(pngImg.shape)
@@ -198,13 +198,13 @@ class Application(tkinter.Frame): #GUI
         self.refCanvas.create_image(32,24,image=self.refImg)
 
     def addDetails(self): # 描いた絵を入力にして, 投影したあとリファレンスの詳細を追加したものを表示 画像で保存
-        self.test_canvas.postscript(file='out.ps', colormode='color')
-        psimage=Image.open('out.ps')
+        self.test_canvas.postscript(file='temp_img/out.ps', colormode='color')
+        psimage=Image.open('temp_img/out.ps')
 
         print(psimage.size)
-        psimage.save('out.png')
+        psimage.save('temp_img/out.png')
 
-        inputImg = cv2.imread('out.png')
+        inputImg = cv2.imread('temp_img/out.png')
         inputImg = inputImg[2:362, 2:482]
         inputImg = cv2.resize(inputImg, (64,48))
 

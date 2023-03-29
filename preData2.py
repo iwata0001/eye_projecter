@@ -13,6 +13,10 @@ from mesh2Lib import mesh2
 import preData as pre
 import DmeshLib as DMesh
 
+# 分散共分散行列を求めるために、データを横に並べた行列を作る
+# データの平均を求めてデータから引く（平均を0にする）
+
+
 N = 143
 newImgs = []
 def isExeption(i): 
@@ -34,6 +38,7 @@ for i in range(N):
 #######################################################################################################################################
 
 # 多重ウェーブレット版 データ加工してベクトル化
+# 未使用
 level = 2
 
 datasArr = [[] for i in range(level+1)]
@@ -86,7 +91,9 @@ dataCentArr = np.array(dataCentArr)
 
 ######################################################################################################################################################################################
 
-#生画像データ加工 データ加工してベクトル化
+# 生画像データ加工 データ加工してベクトル化
+# 画像＋特徴点
+# 未使用
 img1 = cv2.imread('data_eyes/001.png')
 avgEye = np.zeros_like(img1)*(1.0)
 eyeDatas = []
@@ -121,8 +128,8 @@ eyeDatasCenter = eyeDatas - avgEyeData
 
 #######################################################################################################################################################################################
 
-#生画像データ加工 データ加工してベクトル化
-#画像＋特徴点＋ベクタ画像（制御点）
+# 生画像データ加工 データ加工してベクトル化
+# 画像＋特徴点＋ベクタ画像（制御点）
 img1 = cv2.imread('data_eyes/001.png')
 avgEye_v1 = np.zeros_like(img1)*(1.0)
 eyeDatas_v1 = []
@@ -168,21 +175,10 @@ for i in range(N):
 
 
 eyeDatas_v1a = np.array(eyeDatas_v1)
-print(eyeDatas_v1a.shape)
+#print(eyeDatas_v1a.shape)
 
 avgdata_v1 = np.mean(eyeDatas_v1a, axis=0)
-print(avgdata_v1.shape)
+#print(avgdata_v1.shape)
 
 eyeDatasCenter_v1a = eyeDatas_v1a - avgdata_v1
-print(eyeDatasCenter_v1a)
-
-"""
-avgEye = avgEye_v1 / datanum
-avgEye = avgEye_v1.astype(np.uint8)
-eyeDatas_v1 = np.array(eyeDatas_v1)
-
-avgEyeVec_v1 = avgEye_v1.reshape(48*64*3)
-handlesAvgVec_v1 = pre.handlesAvg.reshape(pre.H*1*2) * handCoeff
-avgEyeData_v1 = np.append(avgEyeVec_v1, handlesAvgVec_v1)
-eyeDatasCenter_v1 = eyeDatas_v1 - avgEyeData_v1
-"""
+#print(eyeDatasCenter_v1a)

@@ -1,3 +1,5 @@
+# 入力スケッチを受け付け、データから新しい目データを生成するGUI
+
 from distutils.cmd import Command
 from statistics import variance
 import tkinter

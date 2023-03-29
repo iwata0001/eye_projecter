@@ -1,3 +1,5 @@
+# 入力(画像+特徴点ハンドル+ベクタ画像制御点)を投影する関数project_withVectorを定義
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt

@@ -1,3 +1,6 @@
+# preData, preData2で作成したデータをモデルにするための主成分分析をする
+# 実行に時間がかかるのでファイルに保存
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt

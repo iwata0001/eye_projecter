@@ -1,3 +1,5 @@
+# meshクラスの汎用性を高めたmesh2クラスの定義
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt

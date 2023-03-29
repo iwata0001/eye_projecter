@@ -1,3 +1,6 @@
+# 入力データ(画像＋特徴点ハンドル)を投影する関数projectの定義
+# 投影してリファレンスの詳細を移植するproject_addDetailの定義
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt

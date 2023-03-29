@@ -1,3 +1,7 @@
+# 画像のメッシュ変形に必要な関数を定義
+# 画像を読み込みメッシュ変形できるようにするmeshクラスの定義
+# 主にMoving Least Square法の実装
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt

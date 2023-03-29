@@ -1,3 +1,6 @@
+# eyeProjectorGUIが作ったデータのうちベクトル画像データを可視化・編集するGUI
+# モデルのためのベクトル画像データ作成ツールも兼ねる
+
 from distutils.cmd import Command
 from statistics import variance
 import tkinter

@@ -7,7 +7,7 @@
  
 # DEMO
  
-"hoge"の魅力が直感的に伝えわるデモ動画や図解を載せる
+ https://youtu.be/EvTgpndDvmU
  
 # Features
 かなり適当に描いてもそれらしくなります.  

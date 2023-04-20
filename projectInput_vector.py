@@ -25,7 +25,7 @@ eigVal = np.load('saves/eyedata_eigval_'+str(eyeCoeff)+'-'+str(handCoeff)+'-'+st
 eigVec = np.load('saves/eyedata_eigvec_'+str(eyeCoeff)+'-'+str(handCoeff)+'-'+str(vecCoeff)+'.npy')
 indices = np.argsort(eigVal)[::-1]
 eigValSum = np.sum(eigVal)
-print("eigvalsum", eigValSum)
+#print("eigvalsum", eigValSum)
 
 name = '017'
 variation = ''
@@ -38,7 +38,7 @@ handles = np.append(handles, handles2, axis=0)
 handles = np.append(handles, handles3, axis=0)
 handles = np.append(handles, np.array([[[32.5, 24.5]]]), axis=0)
 
-print(handles.shape)
+#print(handles.shape)
 
 #累積寄与率がcontRateになるまで固有ベクトルを並べる
 contRate = 0.8
@@ -78,7 +78,7 @@ def project_withVector(texture, handles):
     # 初期値を変更する
     for ind, elem in enumerate(vectorTemp):
         vectorTemp[ind] = vectorTemp[ind] #+ random.random()*1000-500
-        print(vectorTemp[ind])
+        #print(vectorTemp[ind])
 
     #初期値ベクターデータを保存
     N = 5
@@ -128,9 +128,11 @@ def project_withVector(texture, handles):
             p = avgEyeData
             newImg, newHandles, newVector = np.split(p, [48*64*3, 48*64*3+13*1*2])
 
-        normDiff = np.linalg.norm(np.array(vectorTemp) - np.array(newVector))
-        print("normDiff:",normDiff)
-        diffs.append(normDiff)
+        #入力と出力の二乗誤差(特徴点)
+        ioDiff = np.mean((handleVec-newHandles)**2 / (handCoeff**2))
+        #normDiff = np.linalg.norm(np.array(vectorTemp) - np.array(newVector))
+        print("ioDiff:",ioDiff)
+        diffs.append(ioDiff)
         xs.append(i)
 
         newImg = newImg.reshape(48,64,3)
@@ -176,9 +178,8 @@ def project_withVector(texture, handles):
             json.dump(vecdata, f)
         
 
-    #plt.plot(xs, diffs)
-    #plt.show()
-    #print(len(diffs), len(xs))
+    plt.plot(xs, diffs)
+    plt.show()
     
     newImg = newImg / eyeCoeff
     newImg = newImg.reshape(48,64,3)
@@ -202,7 +203,7 @@ def project_withVector(texture, handles):
     newVectorN = newVector/vecCoeff
     UOx, UOy, UIx, UIy, LOx, LOy, LIx, LIy, ppl = np.split(newVectorN, [N, 2*N, 3*N, 4*N, 5*N, 6*N, 7*N, 8*N])
     pplXY = []
-    print(len(ppl)/2)
+    #print(len(ppl)/2)
     for i in range(int(len(ppl)/2)):
         pplXY.append([ppl[2*i], ppl[2*i+1]])
 

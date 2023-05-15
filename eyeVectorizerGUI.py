@@ -120,6 +120,27 @@ def circleTex(rad, col1, col2, col3, col4):
 
     return tex
 
+def circleTex_2(rad1, rad2, col1, col2, filter1 = np.array([255,0,0]), filter2 = np.array([0,255,0]), filter3 = np.array([0,0,255])):
+    tex = np.full((2*rad1+1, 2*rad1+1, 3), 255)
+    colD = col2 - col1
+    for i in range(2*rad1+1):
+        for j in range(2*rad1+1):
+            if (i-rad1)**2 + (j-rad1)**2 <= (rad1+0.4)**2:
+                tex[j][i] = col1
+
+                if (i-rad1)**2 + (j-rad1 -rad1)**2 <= (rad1/3 *2)**2:
+                    tex[j][i] = filter1
+                elif (i-rad1)**2 + (j-rad1 -rad1)**2 <= (rad1/3 *2 *2)**2:
+                    tex[j][i] = filter2
+                else:
+                    tex[j][i] = filter3
+
+            if (i-rad1)**2 + (j-rad1)**2 <= (rad2+0.4)**2:
+                tex[j][i] = col2
+    tex = tex.astype(np.uint8)
+
+    return tex
+
 tex = circleTex(50, np.array([0,0,0]), np.array([250,250,250]), np.array([-0,-0,-0])*70, np.array([0,0,0])*120)
 #cv2.imshow("image", tex)
 #cv2.waitKey()
@@ -384,6 +405,11 @@ class Application_EVGUI(tkinter.Frame):
         self.colButton = tkinter.Button(self, text='color', command=self.chooseCol)
         self.colButton.grid(row=5, column=1)
 
+        self.eyeBlackRad = tkinter.IntVar()
+        self.eyeBlackRad.set(50)
+        self.eyeBlackScale = tkinter.Scale(self, variable=self.eyeBlackRad, command=self.updateEyeBlack, orient='horizontal', from_=0, to=100)
+        self.eyeBlackScale.grid(row=5, column=2)
+
         self.labelTarget = tkinter.Label(self, text="target")
         self.labelTarget.grid(row=0, column=0)
 
@@ -419,8 +445,12 @@ class Application_EVGUI(tkinter.Frame):
 
         self.refVisible = True
 
+        self.eyeColorBtn = tkinter.Button(self, text='eyeColor', command=self.applyEyeColor)
+        self.eyeColorBtn.grid(row=7, column=0)
+
         self.eyeCol_1 = np.array([100,100,100])
-        self.iris_tex = circleTex(self.irisRad, np.array([100,100,100]), self.eyeCol_1, np.array([-0,-0,-0])*70, np.array([0,0,0])*120)
+        #self.iris_tex = circleTex(self.irisRad, np.array([100,100,100]), self.eyeCol_1, np.array([-0,-0,-0])*70, np.array([0,0,0])*120)
+        self.iris_tex = circleTex_2(self.irisRad, 50, np.array([128,128,128]), np.array([16,16,16]))
         cv2.imwrite('temp_img/iris_tex.png', self.iris_tex)
 
         self.irisTex = tkinter.PhotoImage(file='temp_img/iris_tex.png')
@@ -640,9 +670,60 @@ class Application_EVGUI(tkinter.Frame):
         self.test_canvas.delete("pointPpl")
         for point in self.handlePpl:
             createOvalEZ(self.test_canvas, point[0], point[1], self.pointRad, "green", "pointPpl")
+
     def getMouseXY(self, event):
         self.mouseXY = [event.x, event.y]
         #print(isInside(self.mouseXY, self.eye1.polygon))
+
+    def applyEyeColor(self):
+        dfmTex = cv2.imread('temp_img/iris_tex_dfm.png')
+        eyeRef = cv2.imread('temp_img/temp_ref.png')
+        colorEyeTex = np.copy(dfmTex)
+
+        eyeCol1 = np.array([0,0,0])
+        eyeCol2 = np.array([0,0,0])
+        eyeCol3 = np.array([0,0,0])
+        numFilt1 = 0
+        numFilt2 = 0
+        numFilt3 = 0
+
+        for i in range(480):
+            for j in range(640):
+                if dfmTex[i][j][0] == 255 and dfmTex[i][j][1] == 0:
+                    numFilt1 += 1
+                    eyeCol1 = eyeCol1 + eyeRef[i][j]
+                if dfmTex[i][j][1] == 255 and dfmTex[i][j][2] == 0:
+                    numFilt2 += 1
+                    eyeCol2 = eyeCol2 + eyeRef[i][j]
+                if dfmTex[i][j][2] == 255 and dfmTex[i][j][0] == 0:
+                    numFilt3 += 1
+                    eyeCol3 = eyeCol3 + eyeRef[i][j]
+
+        eyeCol1 = eyeCol1 / numFilt1
+        eyeCol1 = eyeCol1.astype(np.uint8)
+        eyeCol2 = eyeCol2 / numFilt2
+        eyeCol2 = eyeCol2.astype(np.uint8)
+        eyeCol3 = eyeCol3 / numFilt3
+        eyeCol3 = eyeCol3.astype(np.uint8)
+
+        newIrisTex = circleTex_2(self.irisRad, self.eyeBlackRad.get(), np.array([128,128,128]), np.array([16,16,16]), eyeCol1, eyeCol2, eyeCol3)
+
+        irisMesh = DmeshLib.mesh(4, 4, 2*self.irisRad+1, 2*self.irisRad+1, newIrisTex)
+        irisMesh.setHandlesOrg(np.array([[[self.irisRad, 0]], [[2*self.irisRad+1, self.irisRad]], [[self.irisRad, 2*self.irisRad+1]], [[0, self.irisRad]]]))
+
+        irisMesh.setHandlesDfm(np.array([[self.handlePpl[0]], [self.handlePpl[1]], [self.handlePpl[2]], [self.handlePpl[3]]]))
+        #irisMesh.setHandlesDfm(np.array([[[320, 0]], [[640, 240]], [[320, 480]], [[0, 240]]]))
+        irisMesh.applyHandles()
+        dfmTex = irisMesh.deform(w=640, h=480)
+        cv2.imwrite('temp_img/iris_tex_dfm.png', dfmTex)
+
+        self.irisTexDfm = tkinter.PhotoImage(file='temp_img/iris_tex_dfm.png')
+        self.test_canvas.create_image(2,2,image=self.irisTexDfm,anchor=tkinter.NW,tag="iris")
+        self.test_canvas.tag_lower("iris")
+
+        self.test_canvas.delete("pointPpl")
+        for point in self.handlePpl:
+            createOvalEZ(self.test_canvas, point[0], point[1], self.pointRad, "green", "pointPpl")
 
     def keyPress(self, event):
         print(event.keycode, self.mouseXY)
@@ -709,6 +790,15 @@ class Application_EVGUI(tkinter.Frame):
 
         self.touka = tkinter.PhotoImage(file='temp_img/temp_ref.png')
         self.test_canvas.create_image(2,2,image=self.touka,anchor=tkinter.NW,tag="refImg")
+
+    def updateEyeBlack(self, event):
+        self.iris_tex = circleTex_2(self.irisRad, self.eyeBlackRad.get(), np.array([128,128,128]), np.array([16,16,16]))
+        cv2.imwrite('temp_img/iris_tex.png', self.iris_tex)
+
+        self.irisTex = tkinter.PhotoImage(file='temp_img/iris_tex.png')
+        self.eye_canvas.create_image(2,2,image=self.irisTex,anchor=tkinter.NW)
+
+        self.reloadPpl()
 
     def updateRefItr(self):
         itr = str(self.refItr.get())
@@ -803,6 +893,7 @@ class Application_EVGUI(tkinter.Frame):
         
         self.eye1.draw(self.test_canvas, "black", "eyelash")
         self.eye1.drawWhite(self.test_canvas, "linen", "eyelid")
+
         self.reloadPpl()
         sortDrawOrder(self.test_canvas, self.tagOrder)
         

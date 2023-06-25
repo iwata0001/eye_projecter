@@ -18,8 +18,10 @@ from PIL import ImageTk
 
 from projectInput import project, project_addDetail
 from projectInput_vector import project_withVector
-#from eyeVectorizerGUI import Application_EVGUI
 import DmeshLib as DMesh
+from utlLib import transferColor, createOvalEZ
+import preData as pre
+from preData3 import project_autoHandleGen
 
 def colorCord(R,G,B): #整数値RGBをカラーコードに
     return('#'+ format(R, '02x')+ format(G, '02x')+ format(B, '02x'))
@@ -78,16 +80,22 @@ class Application(tkinter.Frame): #GUI
         self.textName = tkinter.Entry(self, width=20)
         self.textName.grid(row=2, column=1)
 
+        self.handlePosCanvas = tkinter.Canvas(self, bg='white', width=64, height=48)
+        self.handlePosCanvas.grid(row=2, column=2)
+
+        self.autoHandleBtn = tkinter.Button(self, text='generate handle', command=self.generateHandle)
+        self.autoHandleBtn.grid(row=2, column=3)
+
         self.refCanvas = tkinter.Canvas(self, bg='white', width = 64, height=48)
-        self.refCanvas.grid(row=3, column=0)
+        self.refCanvas.grid(row=4, column=0)
 
         self.refInd = tkinter.IntVar()
         self.refInd.set(1)
         self.selRefInd = tkinter.Spinbox(self, from_=1, to=143, increment=1, textvariable=self.refInd, command=self.updateRefImg)
-        self.selRefInd.grid(row=3, column=1)
+        self.selRefInd.grid(row=4, column=1)
 
         self.detailButton = tkinter.Button(self, text='add details', command=self.addDetails)
-        self.detailButton.grid(row=3, column=2)
+        self.detailButton.grid(row=4, column=2)
 
         ind = self.refInd.get()
         url = 'data_eyes/'+ str(ind).zfill(3)+ '.png'
@@ -96,15 +104,25 @@ class Application(tkinter.Frame): #GUI
         self.refCanvas.create_image(32,24,image=self.refImg)
 
         self.test_canvas = tkinter.Canvas(self, bg='white', width=640, height=480)
-        self.test_canvas.grid(row=4, column=0, columnspan=4)
+        self.test_canvas.grid(row=3, column=0, columnspan=4)
         self.test_canvas.bind('<B1-Motion>', self.paint)
         self.test_canvas.bind('<Button-1>', self.register)
         self.test_canvas.bind('<ButtonRelease-1>', self.reset)
 
-        self.outputCanvas = tkinter.Canvas(self, bg='white', width=64, height=48)
+        self.outputCanvas = tkinter.Canvas(self, bg='white', width=128, height=96)
         self.outputCanvas.grid(row=5, column=0)
 
+        self.outputCanvas2 = tkinter.Canvas(self, bg='white', width=128, height=96)
+        self.outputCanvas2.grid(row=5, column=1)
+
         self.EVGUI = None
+
+        self.handlePosCanvas.delete(tkinter.ALL)
+        url = 'handlePos/handlePos1.png'
+        img = Image.open(url)
+        img = img.resize((64,48))
+        self.handlePosImg = ImageTk.PhotoImage(img)
+        self.handlePosCanvas.create_image(32,24,image=self.handlePosImg)
 
     def setup(self):
         self.old_x = None
@@ -126,6 +144,7 @@ class Application(tkinter.Frame): #GUI
         self.handleNum = 0
 
     def save_canvas(self): #入力を投影して出力を画像で保存
+        self.test_canvas.delete("handleMark")
         if self.handleNum == 13:
             self.test_canvas.postscript(file='temp_img/out.ps', colormode='color')
             psimage=Image.open('temp_img/out.ps')
@@ -152,19 +171,28 @@ class Application(tkinter.Frame): #GUI
             pngImg = cv2.resize(pngImg, (64,48))
             
             newEye = project(pngImg, handles)
-            newEye_wv = project_withVector(pngImg, handles)
+            newEye_wv, newHandles_wv = project_withVector(pngImg, handles)
+            self.outputHandles = newHandles_wv
+
             cv2.imwrite('output/'+self.textName.get()+'_output.png', newEye)
             cv2.imwrite('output/'+self.textName.get()+'_input.png', pngImg)
             cv2.imwrite('output/'+self.textName.get()+'_wv_output.png', newEye_wv)
 
+
+            #newEye_TC = transferColor('output/'+self.textName.get()+'_wv_output.png', newHandles_wv, 'data_eyes/'+str(self.refInd.get()).zfill(3)+'.png', pre.handlesArr[self.refInd.get()-1])
+            #cv2.imwrite('output/test_output.png', newEye_TC)
+
             self.outputCanvas.delete(tkinter.ALL)
             url = 'output/'+self.textName.get()+'_wv_output.png'
             img = Image.open(url)
+            img = img.resize((128,96))
             self.outImg = ImageTk.PhotoImage(img)
-            self.outputCanvas.create_image(32,24,image=self.outImg)
+            self.outputCanvas.create_image(64,48,image=self.outImg)
 
         else:
             print("The number of handles is not 13.")
+        for i in range(13):
+            createOvalEZ(self.test_canvas, self.handles[i][0][0], self.handles[i][0][1], 5, "red", "handleMark")
         
 
 
@@ -183,7 +211,16 @@ class Application(tkinter.Frame): #GUI
     def register(self, event): #ハンドルを登録 指定順(白目上右下左, 黒目左, 黒目右, 白目右下, 白目左下, まつ毛左上（黒目左の真上くらい）, まつ毛右上（左上と同様）, 黒目右下, 黒目左下, 瞳孔)
         if self.mode.get() == 1:
             if self.handleNum < 13:
+
+                self.handlePosCanvas.delete(tkinter.ALL)
+                url = 'handlePos/handlePos'+str(self.handleNum+1 +1)+'.png'
+                img = Image.open(url)
+                img = img.resize((64,48))
+                self.handlePosImg = ImageTk.PhotoImage(img)
+                self.handlePosCanvas.create_image(32,24,image=self.handlePosImg)
+
                 self.handles.append([[event.x-2, event.y-2]])
+                createOvalEZ(self.test_canvas, event.x, event.y, 5, "red", "handleMark")
                 print(event.x-2, event.y-2)
                 self.handleNum += 1
 
@@ -199,7 +236,7 @@ class Application(tkinter.Frame): #GUI
         self.refImg = ImageTk.PhotoImage(img)
         self.refCanvas.create_image(32,24,image=self.refImg)
 
-    def addDetails(self): # 描いた絵を入力にして, 投影したあとリファレンスの詳細を追加したものを表示 画像で保存
+    def __addDetails(self): # 描いた絵を入力にして, 投影したあとリファレンスの詳細を追加したものを表示 画像で保存
         self.test_canvas.postscript(file='temp_img/out.ps', colormode='color')
         psimage=Image.open('temp_img/out.ps')
 
@@ -246,6 +283,43 @@ class Application(tkinter.Frame): #GUI
         img = Image.open(url)
         self.outImg = ImageTk.PhotoImage(img)
         self.outputCanvas.create_image(32,24,image=self.outImg)
+
+    def addDetails(self):
+        #newEye_TC = transferColor('output/'+self.textName.get()+'_wv_output.png', self.outputHandles, 'data_eyes/'+str(self.refInd.get()).zfill(3)+'.png', pre.handlesArr[self.refInd.get()-1])
+        newEye_TC = transferColor('data_eyes/'+str(self.refInd.get()).zfill(3)+'.png', pre.handlesArr[self.refInd.get()-1], 'output/'+self.textName.get()+'_wv_output.png', self.outputHandles)
+        cv2.imwrite('output/test_output.png', newEye_TC)
+
+        self.outputCanvas2.delete(tkinter.ALL)
+        url = 'output/test_output.png'
+        img = Image.open(url)
+        img = img.resize((128, 96))
+        self.outImg2 = ImageTk.PhotoImage(img)
+        self.outputCanvas2.create_image(64,48,image=self.outImg2)
+
+    def generateHandle(self):
+        self.test_canvas.delete("handleMark")
+
+        self.test_canvas.postscript(file='temp_img/out.ps', colormode='color')
+        psimage=Image.open('temp_img/out.ps')
+
+        psimage.save('temp_img/out.png')
+
+        pngImg = cv2.imread('temp_img/out.png')
+        pngImg = pngImg[2:362, 2:482]
+        sketch = cv2.resize(pngImg, (64,48))
+        sketch = cv2.cvtColor(sketch, cv2.COLOR_BGR2GRAY)
+        newImgVec, newHandleVec = project_autoHandleGen(sketch)
+        newHandleVec = newHandleVec.reshape(13,1,2)
+        newHandleVec = newHandleVec*10
+
+        for i in range(13):
+            createOvalEZ(self.test_canvas, newHandleVec[i][0][0], newHandleVec[i][0][1], 5, "red", "handleMark")
+        
+        newImg = newImgVec.reshape(48,64)
+        newImg = np.clip(newImg, 0, 255)
+        newImg = newImg.astype(np.uint8)
+        cv2.imshow("image", newImg)
+        cv2.waitKey()
 
 
 

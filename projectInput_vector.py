@@ -226,4 +226,4 @@ def project_withVector(texture, handles):
     plt.imshow(cv2.cvtColor(newEye, cv2.COLOR_BGR2RGB)) # OpenCV は色がGBR順なのでRGB順に並べ替える
     plt.show()
 
-    return newEye
+    return newEye, newHandles

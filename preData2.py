@@ -14,6 +14,7 @@ import json
 from mesh2Lib import mesh2
 import preData as pre
 import DmeshLib as DMesh
+from utlLib import isExeption
 
 # 分散共分散行列を求めるために、データを横に並べた行列を作る
 # データの平均を求めてデータから引く（平均を0にする）
@@ -21,8 +22,6 @@ import DmeshLib as DMesh
 
 N = 143
 newImgs = []
-def isExeption(i): 
-    return (i == 84 or i == 122 or i == 123)
 
 for i in range(N):
     if isExeption(i):

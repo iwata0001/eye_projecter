@@ -23,6 +23,7 @@ import json
 import time
 
 import DmeshLib
+from utlLib import createOvalEZ
 
 def colorCord(R,G,B):
     return('#'+ format(R, '02x')+ format(G, '02x')+ format(B, '02x'))
@@ -93,6 +94,10 @@ def spline1D(x,y,point):
     Y = f(X)
     return X,Y
 
+
+def map0to1(min, max, n):
+    return (n-min)/(max-min)
+
 def circle(canvas, x, y, rad, col1, col2, col3, col4, tag):
     colD = col2 - col1
     tex = np.zeros((100,100,3))
@@ -105,6 +110,14 @@ def circle(canvas, x, y, rad, col1, col2, col3, col4, tag):
                 recX = x-rad+i
                 recY = y-rad+j
                 canvas.create_rectangle(recX, recY, recX+1, recY+1, fill=colorCord(*newCol), width=0, tag = tag)
+
+def pupil_mask(rad):
+    tex = np.full((2*rad+1, 2*rad+1, 3), 0)
+    for i in range(2*rad+1):
+        for j in range(2*rad+1):
+            if (i-rad)**2 + (j-rad)**2 <= (rad+0.4)**2:
+                tex[j][i] = np.array([255,0,0])
+    tex = tex.astype(np.uint8)
 
 def circleTex(rad, col1, col2, col3, col4):
     tex = np.full((2*rad+1, 2*rad+1, 3), 255)
@@ -120,7 +133,7 @@ def circleTex(rad, col1, col2, col3, col4):
 
     return tex
 
-def circleTex_2(rad1, rad2, col1, col2, filter1 = np.array([255,0,0]), filter2 = np.array([0,255,0]), filter3 = np.array([0,0,255])):
+def circleTex_2(rad1, rad2, col1, col2, filter1 = np.array([255,0,0]), filter2 = np.array([0,255,0]), filter3 = np.array([0,0,255]), isGradation = False):
     tex = np.full((2*rad1+1, 2*rad1+1, 3), 255)
     colD = col2 - col1
     for i in range(2*rad1+1):
@@ -128,12 +141,27 @@ def circleTex_2(rad1, rad2, col1, col2, filter1 = np.array([255,0,0]), filter2 =
             if (i-rad1)**2 + (j-rad1)**2 <= (rad1+0.4)**2:
                 tex[j][i] = col1
 
-                if (i-rad1)**2 + (j-rad1 -rad1)**2 <= (rad1/3 *2)**2:
-                    tex[j][i] = filter1
-                elif (i-rad1)**2 + (j-rad1 -rad1)**2 <= (rad1/3 *2 *2)**2:
-                    tex[j][i] = filter2
+                if isGradation:
+                    distance = ((i-rad1)**2 + (j-rad1-rad1)**2)**(1/2)
+                    if distance < rad1:
+                        k = map0to1(0, rad1, distance)
+                        newCol = k*filter2 + (1-k)*filter1
+                        newCol = np.clip(newCol, 0, 255)
+                        newCol = newCol.astype(np.uint8)
+                        tex[j][i] = newCol
+                    else:
+                        k = map0to1(rad1, 2*rad1, distance)
+                        newCol = k*filter3 + (1-k)*filter2
+                        newCol = np.clip(newCol, 0, 255)
+                        newCol = newCol.astype(np.uint8)
+                        tex[j][i] = newCol
                 else:
-                    tex[j][i] = filter3
+                    if (i-rad1)**2 + (j-rad1 -rad1)**2 <= (rad1/3 *2)**2:
+                        tex[j][i] = filter1
+                    elif (i-rad1)**2 + (j-rad1 -rad1)**2 <= (rad1/3 *2 *2)**2:
+                        tex[j][i] = filter2
+                    else:
+                        tex[j][i] = filter3
 
             if (i-rad1)**2 + (j-rad1)**2 <= (rad2+0.4)**2:
                 tex[j][i] = col2
@@ -147,9 +175,6 @@ tex = circleTex(50, np.array([0,0,0]), np.array([250,250,250]), np.array([-0,-0,
 
 def func(x):
     return math.sin(x)
-
-def createOvalEZ(canvas, X, Y, rad, color, tag):
-    canvas.create_oval(X-rad, Y-rad, X+rad, Y+rad, fill=color, tag = tag, width=0)
 
 class eyelash:
     def __init__(self, shapeX, shapeY, rad, N):
@@ -677,6 +702,9 @@ class Application_EVGUI(tkinter.Frame):
 
     def applyEyeColor(self):
         dfmTex = cv2.imread('temp_img/iris_tex_dfm.png')
+        i = self.refInd.get()
+        orgTex = cv2.imread('data_eyes/'+str(i).zfill(3)+'.png')
+        orgTex = cv2.resize(orgTex, (640, 480))
         eyeRef = cv2.imread('temp_img/temp_ref.png')
         colorEyeTex = np.copy(dfmTex)
 
@@ -698,6 +726,8 @@ class Application_EVGUI(tkinter.Frame):
                 if dfmTex[i][j][2] == 255 and dfmTex[i][j][0] == 0:
                     numFilt3 += 1
                     eyeCol3 = eyeCol3 + eyeRef[i][j]
+                if np.all(dfmTex[i][j] == 255):
+                    orgTex[i][j] = np.array([255, 255, 255])
 
         eyeCol1 = eyeCol1 / numFilt1
         eyeCol1 = eyeCol1.astype(np.uint8)
@@ -706,7 +736,7 @@ class Application_EVGUI(tkinter.Frame):
         eyeCol3 = eyeCol3 / numFilt3
         eyeCol3 = eyeCol3.astype(np.uint8)
 
-        newIrisTex = circleTex_2(self.irisRad, self.eyeBlackRad.get(), np.array([128,128,128]), np.array([16,16,16]), eyeCol1, eyeCol2, eyeCol3)
+        newIrisTex = circleTex_2(self.irisRad, self.eyeBlackRad.get(), np.array([128,128,128]), np.array([16,16,16]), eyeCol1, eyeCol2, eyeCol3, True)
 
         irisMesh = DmeshLib.mesh(4, 4, 2*self.irisRad+1, 2*self.irisRad+1, newIrisTex)
         irisMesh.setHandlesOrg(np.array([[[self.irisRad, 0]], [[2*self.irisRad+1, self.irisRad]], [[self.irisRad, 2*self.irisRad+1]], [[0, self.irisRad]]]))
@@ -715,6 +745,8 @@ class Application_EVGUI(tkinter.Frame):
         #irisMesh.setHandlesDfm(np.array([[[320, 0]], [[640, 240]], [[320, 480]], [[0, 240]]]))
         irisMesh.applyHandles()
         dfmTex = irisMesh.deform(w=640, h=480)
+
+        cv2.imwrite('temp_img/iris_tex_only.png', orgTex)
         cv2.imwrite('temp_img/iris_tex_dfm.png', dfmTex)
 
         self.irisTexDfm = tkinter.PhotoImage(file='temp_img/iris_tex_dfm.png')

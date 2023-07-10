@@ -25,5 +25,7 @@ def main():
     cv2.imshow('LSC result', image)
     cv2.waitKey(0)
 
+    #test
+
 if __name__ == '__main__':
     main()

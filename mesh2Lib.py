@@ -24,7 +24,7 @@ class mesh2: #meshクラスのメッシュの形状を任意にしたもの
         self.texture = img
         self.image = cv2.resize(self.texture, (width, height))
         
-    def deform(self):
+    def deform(self, whiteback=False):
         maskSum = np.zeros_like(self.image)
         newImg = np.zeros_like(self.image)
         for triangle in self.triangles:
@@ -40,13 +40,15 @@ class mesh2: #meshクラスのメッシュの形状を任意にしたもの
             maskedImg = affinImg * mask
             newImg = newImg + maskedImg * (1 - maskSum)
             maskSum = np.clip(maskSum + mask, 0, 1) 
-            
-        #newImg = (newImg + self.image * (1 - maskSum)).astype(np.uint8)
+        
+        if whiteback:
+            white = np.full_like(self.image, 255)
+            newImg = (newImg + white * (1 - maskSum)).astype(np.uint8)
         newImg = (newImg).astype(np.uint8)
         
         return newImg
     
-    def setHandlesOrg(self, handles):
+    def setHandlesOrg(self, handles, handlesAvg = pre.handlesAvg):
         self.handlesOrg = handles
         self.weightsArr = []
         self.AsArr = []
@@ -55,8 +57,8 @@ class mesh2: #meshクラスのメッシュの形状を任意にしたもの
         tAArr = []
         
         for v in self.vartices:
-            tWArr.append(DMesh.calcWeights(np.array([v]), pre.handlesAvg))
-            tAArr.append(DMesh.A_j(np.array([v]), pre.handlesAvg))
+            tWArr.append(DMesh.calcWeights(np.array([v]), handlesAvg))
+            tAArr.append(DMesh.A_j(np.array([v]), handlesAvg))
         tWArr = np.array(tWArr)
         tAArr = np.array(tAArr)
         

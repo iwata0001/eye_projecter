@@ -21,7 +21,7 @@ from projectInput_vector import project_withVector
 import DmeshLib as DMesh
 from utlLib import transferColor, createOvalEZ
 import preData as pre
-from preData3 import project_autoHandleGen
+from preData3 import project_autoHandleGen, findEdge
 
 def colorCord(R,G,B): #整数値RGBをカラーコードに
     return('#'+ format(R, '02x')+ format(G, '02x')+ format(B, '02x'))
@@ -108,6 +108,7 @@ class Application(tkinter.Frame): #GUI
         self.test_canvas.bind('<B1-Motion>', self.paint)
         self.test_canvas.bind('<Button-1>', self.register)
         self.test_canvas.bind('<ButtonRelease-1>', self.reset)
+        self.test_canvas.bind('<Button-3>', self.setEyeCenterPos)
 
         self.outputCanvas = tkinter.Canvas(self, bg='white', width=128, height=96)
         self.outputCanvas.grid(row=5, column=0)
@@ -224,6 +225,12 @@ class Application(tkinter.Frame): #GUI
                 print(event.x-2, event.y-2)
                 self.handleNum += 1
 
+    def setEyeCenterPos(self, event):
+        self.test_canvas.delete("eyeCenter")
+        self.eyeCenterPos = [event.x-2, event.y-2]
+        createOvalEZ(self.test_canvas, event.x, event.y, 5, "green", "eyeCenter")
+
+
 
     def reset(self, event):
         self.old_x, self.old_y = None, None
@@ -305,17 +312,42 @@ class Application(tkinter.Frame): #GUI
         psimage.save('temp_img/out.png')
 
         pngImg = cv2.imread('temp_img/out.png')
+        print(pngImg.shape)
         pngImg = pngImg[2:362, 2:482]
+        pngImg = cv2.resize(pngImg, (640,480))
+
+        dx = 325-self.eyeCenterPos[0]
+        dy = 245-self.eyeCenterPos[1]
+        afin_matrix = np.float32([[1,0,dx],[0,1,dy]])
+        pngImg = cv2.warpAffine(pngImg, afin_matrix, (640,480), borderValue = (255,255,255))
+
         sketch = cv2.resize(pngImg, (64,48))
         sketch = cv2.cvtColor(sketch, cv2.COLOR_BGR2GRAY)
-        newImgVec, newHandleVec = project_autoHandleGen(sketch)
+
+        edge = findEdge(sketch)
+        cv2.drawMarker(sketch, (int(edge["R"][0]), int(edge["R"][1])), (0,0,0))
+        cv2.drawMarker(sketch, (int(edge["L"][0]), int(edge["L"][1])), (0,0,0))
+        cv2.drawMarker(sketch, (int(edge["D"][0]), int(edge["D"][1])), (0,0,0))
+        cv2.imwrite('temp_img/autoHandleGen.png', sketch)
+        
+        edgeR = np.array(edge["R"])
+        edgeD = np.array(edge["D"])
+        edgeL = np.array(edge["L"])
+        
+        edgeR = np.array([edgeR])
+        edgeD = np.array([edgeD])
+        edgeL = np.array([edgeL])
+
+        handles = np.array([edgeR,edgeD,edgeL,np.array([[32.5,24.5]])])
+
+        newImgVec, newHandleVec = project_autoHandleGen(sketch,handles)
         newHandleVec = newHandleVec.reshape(13,1,2)
         newHandleVec = newHandleVec*10
         self.handles = newHandleVec
         self.handleNum = 13
 
         for i in range(13):
-            createOvalEZ(self.test_canvas, newHandleVec[i][0][0], newHandleVec[i][0][1], 5, "red", "handleMark")
+            createOvalEZ(self.test_canvas, newHandleVec[i][0][0]-dx, newHandleVec[i][0][1]-dy, 5, "red", "handleMark")
         
         newImg = newImgVec.reshape(48,64)
         newImg = np.clip(newImg, 0, 255)

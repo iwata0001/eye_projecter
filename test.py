@@ -2,15 +2,12 @@ import cv2
 import numpy as np
 
 def main():
-    a = np.arange(100).reshape(10,10)
-    print(a)
-    b=np.delete(a,[2,4,6],1)
-    print(b)
+    a = np.array([0,1,2,3,4,5,6,7,8,9])
+    b = np.array([10,11,12,13])
 
-    c=np.array([[[1,2]],[[3,4]],[[5,6]],[[7,8]]])
-    d=np.array([[[1,1]],[[1,1]],[[1,1]],[[1,1]]])
-    e=np.array([[1,1]])
-    print(c-e)
+    a[[0,2,4,6]] = b
+
+    print(a)
 
 if __name__ == '__main__':
     main()

@@ -59,9 +59,14 @@ handleVecsNormalized = handleVecs - avgHandleVec
 handleVecs_4 = np.delete(handleVecsNormalized, [0,1,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23], 1)
 avgHandleVec_4 = avgHndl.reshape(4*1*2)
 
+# ハンドル4つでそのままのほうのデータ
 stdImage = np.std(imageVecsNormalized)
 stdHandle = np.std(handleVecs_4) /10
 featVecsNormalized = np.append(imageVecsNormalized/stdImage, handleVecs_4/stdHandle, axis=1)
+
+# EM-PCAをやる用のデータ
+stdHandle_EM = np.std(handleVecsNormalized) /10
+featVecsNormalized_EM = np.append(imageVecsNormalized/stdImage, handleVecsNormalized/stdHandle_EM, axis=1)
 
 #計算しなおすときはTrueに
 if 0:
@@ -71,10 +76,22 @@ if 0:
     np.save('saves/eigVal_autoHandleGen_4handle', dataEig[0].real)
     np.save('saves/eigVec_autoHandleGen_4handle', dataEig[1].real.T)
 
+if 1:
+    covMat = np.cov(featVecsNormalized_EM.T)
+    print("covmat",covMat.shape)
+    dataEig = np.linalg.eig(covMat)
+    np.save('saves/eigVal_autoHandleGen_EMPCA', dataEig[0].real)
+    np.save('saves/eigVec_autoHandleGen_EMPCA', dataEig[1].real.T)
+
 eigVal = np.load('saves/eigVal_autoHandleGen_4handle.npy')
 eigVec = np.load('saves/eigVec_autoHandleGen_4handle.npy')
 indices = np.argsort(eigVal)[::-1]
 eigValSum = np.sum(eigVal)
+
+eigVal_EM = np.load('saves/eigVal_autoHandleGen_EMPCA.npy')
+eigVec_EM = np.load('saves/eigVec_autoHandleGen_EMPCA.npy')
+indices_EM = np.argsort(eigVal_EM)[::-1]
+eigValSum_EM = np.sum(eigVal_EM)
 
 #累積寄与率がcontRateになるまで固有ベクトルを並べる
 contRate = 0.8
@@ -86,15 +103,30 @@ for n in range(len(eigVal)):
         D = n
         break
 
-print("D: ", D)
+#print("D: ", D)
 
 for n in range(D):
     A.append(eigVec[indices[n]])
+
+A_EM = []
+temp_EM = 0
+for n in range(len(eigVal_EM)):
+    temp_EM += eigVal_EM[indices_EM[n]]
+    if temp_EM / eigValSum_EM > contRate:
+        D_EM = n
+        break
+
+for n in range(D_EM):
+    A_EM.append(eigVec_EM[indices_EM[n]])
 
 # 並べた固有ベクトルで張られる空間に点を正射影する行列Pを求める
 A = np.array(A)
 A = A.T
 P = np.linalg.inv(A.T @ A) @ A.T
+
+A_EM = np.array(A_EM)
+A_EM = A_EM.T
+P_EM = np.linalg.inv(A_EM.T @ A_EM) @ A_EM.T
 
 featA = featVecsNormalized.T
 featP = np.linalg.inv(featA.T @ featA) @ featA.T
@@ -146,7 +178,6 @@ def project_autoHandleGen(sketch,handle=avgHndl): #skechはcv2.imreadで読み�
 
     handleVec = handle.reshape(4*1*2)
     handleVecNormalized = handleVec - avgHandleVec_4
-    print("handleVec",handleVec)
 
     featureVec = np.append(imgVecNormalized/stdImage, handleVecNormalized/stdHandle)
     avgFeatureVec = np.append(avgImageVec/stdImage, avgHandleVec_4/stdHandle)
@@ -164,9 +195,42 @@ def project_autoHandleGen(sketch,handle=avgHndl): #skechはcv2.imreadで読み�
     newHandleVec = (handleVecsNormalized.T) @ feat_x + avgHandleVec
     #newHandleVec.reshape(preData.H,1,2)
 
-    print("newHandleVec",np.delete(newHandleVec, [0,1,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]))
-
     return(newImgVec*stdImage, newHandleVec)
+
+def project_autoHandleGen_EM(sketch,handle=avgHndl): #skechはcv2.imreadで読み込んだもの
+    mesh = mesh2(64,48,sketch)
+    mesh.setHandlesOrg(handle, avgHndl)
+    mesh.setHandlesDfm(avgHndl)
+    mesh.applyHandles()
+    img = mesh.deform()
+    imgVec = img.reshape(48*64)
+    imgVecNormalized = imgVec - avgImageVec
+
+    handleVec = handle.reshape(4*1*2)
+    handleVecNormalized = handleVec - avgHandleVec_4
+    initInputHandle = handleVecNormalized/stdHandle_EM
+
+    initInputImg = imgVecNormalized/stdImage
+    avgFeatureVec = np.append(avgImageVec/stdImage, avgHandleVec/stdHandle_EM)
+
+    estimated = np.zeros(13*1*2)
+
+    for i in range(100):
+        estimated[[2,3,4,5,6,7,24,25]] = initInputHandle
+        tempFeatureVec = np.append(initInputImg, estimated) # EMPCAのために最初は平均（０）で残りの次元を埋める　あとは推定値で埋める
+        if D_EM != 0:
+            x = P_EM @ tempFeatureVec
+            p = A_EM @ x
+
+            newFeatVec = avgFeatureVec + p
+        else:
+            newFeatVec = avgFeatureVec
+
+        nokori, estimated = np.split(p,[48*64])
+
+    newImgVec, newHandleVec = np.split(newFeatVec,[48*64])
+
+    return(newImgVec*stdImage, newHandleVec*stdHandle_EM)
 
 sketch = cv2.imread('temp_img/out.png')
 sketch = cv2.resize(sketch, dsize=(64, 48))
@@ -175,7 +239,21 @@ edge = findEdge(sketch)
 cv2.drawMarker(sketch, (int(edge["R"][0]), int(edge["R"][1])), (0,0,0))
 cv2.drawMarker(sketch, (int(edge["L"][0]), int(edge["L"][1])), (0,0,0))
 cv2.drawMarker(sketch, (int(edge["D"][0]), int(edge["D"][1])), (0,0,0))
-newImgVec,newHandleVec= project_autoHandleGen(sketch)
+
+edgeR = np.array(edge["R"])
+edgeD = np.array(edge["D"])
+edgeL = np.array(edge["L"])
+
+edgeR = np.array([edgeR])
+edgeD = np.array([edgeD])
+edgeL = np.array([edgeL])
+
+handles = np.array([edgeR,edgeD,edgeL,np.array([[32.5,24.5]])])
+
+newImgVec,newHandleVec= project_autoHandleGen(sketch, handles)
+print(newHandleVec)
+newImgVec,newHandleVec= project_autoHandleGen_EM(sketch, handles)
+print(newHandleVec)
 
 #newImg = newImgVec.reshape(48,64)
 #newImg = np.clip(newImg, 0, 255)

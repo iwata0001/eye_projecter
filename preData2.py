@@ -34,6 +34,8 @@ for i in range(N):
     eyeMesh.applyHandles()
     
     newImg = eyeMesh.deform()
+    if i < 5:
+        cv2.imwrite('temp_img/deform'+ str(i+1).zfill(3)+ '.png', newImg)
     newImgs.append(newImg)
 
 #######################################################################################################################################

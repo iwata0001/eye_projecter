@@ -28,7 +28,7 @@ def transferColor(pngURL_org, handles_org, pngURL_ref, handles_ref):
     for i in range(48):
         for j in range(64):
             orgHSV[i][j][0] = refHSV[i][j][0]
-            #orgHSV[i][j][1] = refHSV[i][j][1]
+            orgHSV[i][j][1] = refHSV[i][j][1]
 
     rtnImgNormalized = cv2.cvtColor(orgHSV,cv2.COLOR_HSV2BGR)
 

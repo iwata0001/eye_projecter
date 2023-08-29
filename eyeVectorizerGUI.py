@@ -466,7 +466,7 @@ class Application_EVGUI(tkinter.Frame):
         self.refItr = tkinter.IntVar()
         self.refItr.set(0)
         self.refItrScale = tkinter.Spinbox(self, from_=0, to=100, increment=1, textvariable=self.refItr, command=self.updateRefItr)
-        self.refItrScale.grid(row=6, column=3)
+        #self.refItrScale.grid(row=6, column=3)
 
         self.refVisible = True
 
@@ -504,7 +504,7 @@ class Application_EVGUI(tkinter.Frame):
             createOvalEZ(self.test_canvas, point[0], point[1], self.pointRad, "blue", "handleO")
 
         #self.loadURL('json_data/avg_v2.json')
-        self.loadURL('json_data/fitting/vector_fitted_itr=0.json')
+        self.loadURL('json_data/avg_v2.json')
         
         sortDrawOrder(self.test_canvas, self.tagOrder)
 

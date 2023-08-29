@@ -1,8 +1,27 @@
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
 from mesh2Lib import mesh2
 import preData as pre
+
+def blendPreview(eye, back, mask, center=(185, 144), k=1): #eye,maskは(48, 64, 3) backは(300,300,3) cv2.imreadしてから引数にしてください
+    mask = mask * 255
+
+    resizeMask = cv2.resize(mask, None, fx = k, fy = k)
+    resizeEye = cv2.resize(eye, None, fx = k, fy = k)
+
+    size = resizeMask.shape
+
+    maskBig = np.zeros((300,300,3), np.uint8)
+    eyeBig = np.zeros((300,300,3), np.uint8)
+
+    maskBig[0:size[0], 0:size[1]] = resizeMask
+    eyeBig[0:size[0], 0:size[1]] = resizeEye
+
+    result = cv2.seamlessClone(eyeBig, back, maskBig, center, cv2.NORMAL_CLONE)
+
+    return result
 
 def transferColor(pngURL_org, handles_org, pngURL_ref, handles_ref):
     orgImg = cv2.imread(pngURL_org)
@@ -13,12 +32,14 @@ def transferColor(pngURL_org, handles_org, pngURL_ref, handles_ref):
     orgEyeMesh.setHandlesDfm(pre.handlesAvg)
     orgEyeMesh.applyHandles()
     orgImgNormalized = orgEyeMesh.deform()
+    cv2.imwrite('temp_img/detailingOrgNormalized.png', orgImgNormalized)
 
     refEyeMesh = mesh2(64,48, refImg)
     refEyeMesh.setHandlesOrg(handles_ref)
     refEyeMesh.setHandlesDfm(pre.handlesAvg)
     refEyeMesh.applyHandles()
     refImgNormalized = refEyeMesh.deform()
+    cv2.imwrite('temp_img/detailingRefNormalized.png', refImgNormalized)
 
     orgHSV = cv2.cvtColor(orgImgNormalized,cv2.COLOR_BGR2HSV)
     refHSV = cv2.cvtColor(refImgNormalized,cv2.COLOR_BGR2HSV)

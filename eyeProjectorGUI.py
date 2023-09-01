@@ -110,7 +110,8 @@ class Application(tkinter.Frame): #GUI
         self.previewToggle = tkinter.Checkbutton(self, text = "displayEyeR", command = self.updatePreview, variable = self.previewEyeR)
         self.previewToggle.grid(row=4,column=5)
 
-        self.previewEyeCenter = (185, 144)
+        self.previewEyeLCenter = (185, 144)
+        self.previewEyeRCenter = (115, 144)
 
         self.previewEyeScale = tkinter.IntVar()
         self.previewEyeScale.set(100)
@@ -276,14 +277,17 @@ class Application(tkinter.Frame): #GUI
         self.refCanvas.create_image(32,24,image=self.refImg)
 
     def updatePreview(self, event=None):
-        eye = cv2.imread('output/outputEyeImg.png')
+        eyeL = cv2.imread('output/outputEyeImg.png')
+        eyeR = cv2.flip(eyeL, 1)
         if(self.previewEyeR.get()):
             back = cv2.imread('preview/'+str(self.previewInd.get())+'_noLEye.png')
         else:
             back = cv2.imread('preview/'+str(self.previewInd.get())+'_noEye.png')
-        mask = cv2.imread('temp_img/eyeMask.png')
-        print(eye.shape, back.shape, mask.shape)
-        previewImg = blendPreview(eye, back, mask, self.previewEyeCenter, self.previewEyeScale.get()/100)
+        maskL = cv2.imread('temp_img/eyeMask.png')
+        maskR = cv2.flip(maskL, 1)
+
+        previewImg = blendPreview(eyeL, back, maskL, self.previewEyeLCenter, self.previewEyeScale.get()/100)
+        previewImg = blendPreview(eyeR, previewImg, maskR, self.previewEyeRCenter, self.previewEyeScale.get()/100)
 
         image_rgb = cv2.cvtColor(previewImg, cv2.COLOR_BGR2RGB) # imreadはBGRなのでRGBに変換
         image_pil = Image.fromarray(image_rgb) # RGBからPILフォーマットへ変換
@@ -291,7 +295,8 @@ class Application(tkinter.Frame): #GUI
         self.previewCanvas.create_image(0, 0, image=self.previewImgTk, anchor='nw')
 
     def previewB1Motion(self, event):
-        self.previewEyeCenter = (event.x, event.y)
+        self.previewEyeLCenter = (event.x, event.y)
+        self.previewEyeRCenter = (300-event.x, event.y)
         self.updatePreview()
         #print("previewB1Motion")
 

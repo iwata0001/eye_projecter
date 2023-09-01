@@ -39,7 +39,7 @@ for i in range(N):
     mesh.setHandlesOrg(hndl, avgHndl)
     mesh.setHandlesDfm(avgHndl)
     mesh.applyHandles()
-    imgNormalized = mesh.deform(whiteback=True)
+    imgNormalized = mesh.deform()
 
     if i<5:
         cv2.imwrite("temp_img/deformImg"+str(i+1)+".png", imgNormalized)
@@ -76,7 +76,7 @@ if 0:
     np.save('saves/eigVal_autoHandleGen_4handle', dataEig[0].real)
     np.save('saves/eigVec_autoHandleGen_4handle', dataEig[1].real.T)
 
-if 1:
+if 0:
     covMat = np.cov(featVecsNormalized_EM.T)
     print("covmat",covMat.shape)
     dataEig = np.linalg.eig(covMat)
@@ -203,6 +203,7 @@ def project_autoHandleGen_EM(sketch,handle=avgHndl): #skechはcv2.imreadで読�
     mesh.setHandlesDfm(avgHndl)
     mesh.applyHandles()
     img = mesh.deform()
+    cv2.imwrite('temp_img/normalizedSketch_gray.png', img)
     imgVec = img.reshape(48*64)
     imgVecNormalized = imgVec - avgImageVec
 

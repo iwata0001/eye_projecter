@@ -24,7 +24,7 @@ class mesh2: #meshクラスのメッシュの形状を任意にしたもの
         self.texture = img
         self.image = cv2.resize(self.texture, (width, height))
         
-    def deform(self, whiteback=False):
+    def deform(self, whiteback=False, outputMask=False):
         maskSum = np.zeros_like(self.image)
         newImg = np.zeros_like(self.image)
         for triangle in self.triangles:
@@ -46,7 +46,10 @@ class mesh2: #meshクラスのメッシュの形状を任意にしたもの
             newImg = (newImg + white * (1 - maskSum)).astype(np.uint8)
         newImg = (newImg).astype(np.uint8)
         
-        return newImg
+        if outputMask:
+            return newImg, maskSum
+        else:
+            return newImg
     
     def setHandlesOrg(self, handles, handlesAvg = pre.handlesAvg):
         self.handlesOrg = handles

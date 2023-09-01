@@ -135,6 +135,8 @@ def project_withVector(texture, handles):
         diffs.append(ioDiff)
         xs.append(i)
 
+        '''
+        # 収束過程の画像保存
         newImg = newImg.reshape(48,64,3)
         newImg = np.clip(newImg, 0, 255)
         newImg = newImg.astype(np.uint8)
@@ -150,11 +152,13 @@ def project_withVector(texture, handles):
 
         newEye = newMesh.deform()
         cv2.imwrite('output/fitting_img/'+'img_itr'+str(i+1)+'.png', newEye)
+        '''
 
 
         vectorTemp = newVector
 
-        #ベクターデータを保存
+        '''
+        #収束過程のベクターデータを保存
         N = 5
         newVectorN = newVector/vecCoeff
         UOx, UOy, UIx, UIy, LOx, LOy, LIx, LIy, ppl = np.split(newVectorN, [N, 2*N, 3*N, 4*N, 5*N, 6*N, 7*N, 8*N])
@@ -176,10 +180,11 @@ def project_withVector(texture, handles):
 
         with open('json_data/fitting/vector_fitted_itr='+str(i+1)+'.json', 'w') as f:
             json.dump(vecdata, f)
+        '''
         
 
-    plt.plot(xs, diffs)
-    plt.show()
+    #plt.plot(xs, diffs)
+    #plt.show()
     
     newImg = newImg / eyeCoeff
     newImg = newImg.reshape(48,64,3)
@@ -195,7 +200,7 @@ def project_withVector(texture, handles):
     #newMesh.setHandlesDfm(handles)
     newMesh.applyHandles()
 
-    newEye = newMesh.deform()
+    newEye, newEyeMask = newMesh.deform(outputMask=True)
 
     #cv2.imwrite('output/'+ name + variation + '_projected_'+str(contRate)+'.png', newEye)
 
@@ -223,7 +228,7 @@ def project_withVector(texture, handles):
         json.dump(vecdata, f)
     print("saved.")
 
-    plt.imshow(cv2.cvtColor(newEye, cv2.COLOR_BGR2RGB)) # OpenCV は色がGBR順なのでRGB順に並べ替える
-    plt.show()
+    #plt.imshow(cv2.cvtColor(newEye, cv2.COLOR_BGR2RGB)) # OpenCV は色がGBR順なのでRGB順に並べ替える
+    #plt.show()
 
-    return newEye, newHandles
+    return newEye, newHandles, newEyeMask

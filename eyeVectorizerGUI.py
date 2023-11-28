@@ -464,9 +464,12 @@ class Application_EVGUI(tkinter.Frame):
 
         #tkinter.Spinbox(self, from_=1, to=100, increment=1, textvariable=self.refInd, command=self.updateRefItr)
         self.refItr = tkinter.IntVar()
-        self.refItr.set(0)
-        self.refItrScale = tkinter.Spinbox(self, from_=0, to=100, increment=1, textvariable=self.refItr, command=self.updateRefItr)
-        #self.refItrScale.grid(row=6, column=3)
+        self.refItr.set(110)
+        self.refItrScale = tkinter.Spinbox(self, from_=110, to=143, increment=1, textvariable=self.refItr, command=self.updateRefItr)
+        self.refItrScale.grid(row=6, column=3)
+
+        self.outImgBtn = tkinter.Button(self, text='output', command=self.outputCurrentImg)
+        self.outImgBtn.grid(row=5, column=3)
 
         self.refVisible = True
 
@@ -703,7 +706,7 @@ class Application_EVGUI(tkinter.Frame):
     def applyEyeColor(self):
         dfmTex = cv2.imread('temp_img/iris_tex_dfm.png')
         i = self.refInd.get()
-        orgTex = cv2.imread('data_eyes/'+str(i).zfill(3)+'.png')
+        orgTex = cv2.imread('data_eyes_test/'+str(i).zfill(3)+'.png')
         orgTex = cv2.resize(orgTex, (640, 480))
         eyeRef = cv2.imread('temp_img/temp_ref.png')
         colorEyeTex = np.copy(dfmTex)
@@ -804,7 +807,7 @@ class Application_EVGUI(tkinter.Frame):
     def dispRefImg(self):
         self.test_canvas.delete("refImg")
         i = self.refInd.get()
-        ref = Image.open('data_eyes/' + str(i).zfill(3) + '.png')
+        ref = Image.open('data_eyes_test/' + str(i).zfill(3) + '.png')
         ref.putalpha(128)
         ref = ref.resize((640, 480))
         ref.save('temp_img/temp_ref.png')
@@ -834,13 +837,13 @@ class Application_EVGUI(tkinter.Frame):
 
     def updateRefItr(self):
         itr = str(self.refItr.get())
-        self.loadURL('json_data/fitting/vector_fitted_itr='+itr+'.json')
-        print('json_data/fitting/vector_fitted_itr='+itr+'.json')
+        self.loadURL('test_result/json/test'+str(itr)+'.json')
+        print('test_result/json/test'+str(itr)+'.json')
 
         i = int(self.refItr.get())
 
         if(i != 0):
-            ref = Image.open('output/fitting_img/img_itr'+str(i)+'.png')
+            ref = Image.open('data_eyes_test/' + str(itr).zfill(3) + '.png')
             ref.putalpha(128)
             ref = ref.resize((640, 480))
             ref.save('temp_img/temp_ref.png')
@@ -928,6 +931,11 @@ class Application_EVGUI(tkinter.Frame):
 
         self.reloadPpl()
         sortDrawOrder(self.test_canvas, self.tagOrder)
+
+    def outputCurrentImg(self):
+        self.test_canvas.postscript(file='temp_img/out.ps', colormode='color')
+        psimage=Image.open('temp_img/out.ps')
+        psimage.save('temp_img/vectorImg.png')
         
 
 

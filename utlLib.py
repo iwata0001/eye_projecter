@@ -49,7 +49,7 @@ def transferColor(pngURL_org, handles_org, pngURL_ref, handles_ref):
     for i in range(48):
         for j in range(64):
             orgHSV[i][j][0] = refHSV[i][j][0]
-            orgHSV[i][j][1] = refHSV[i][j][1]
+            #orgHSV[i][j][1] = refHSV[i][j][1]
 
     rtnImgNormalized = cv2.cvtColor(orgHSV,cv2.COLOR_HSV2BGR)
 
@@ -66,6 +66,39 @@ def createOvalEZ(canvas, X, Y, rad, color, tag):
 
 def isExeption(i): 
     return (i == 84 or i == 122 or i == 123)
+
+def calcHandleDiff(handleTrue, handle): #handleはnp.array (13,1,2)の形
+    diff = handleTrue - handle
+    pixelDiff = 0
+    handleNum = 0
+    for d in diff:
+        handleNum+= 1
+        pixelDiff += np.linalg.norm(d[0], ord=2)
+    pixelDiff = pixelDiff/handleNum
+
+    boundingBoxLen = handleBoundingBox(handleTrue)
+    ratioDiff = pixelDiff/boundingBoxLen
+
+    return pixelDiff, ratioDiff, boundingBoxLen
+
+def handleBoundingBox(handle):
+    minX = 100000
+    maxX = 0
+    minY = 100000
+    maxY = 0
+    for h in handle:
+        if h[0][0] < minX:
+            minX = h[0][0]
+        if h[0][1] < minY:
+            minY = h[0][1]
+        if h[0][0] > maxX:
+            maxX = h[0][0]
+        if h[0][1] > maxY:
+            maxY = h[0][1]
+    min = np.array([minX, minY])
+    max = np.array([maxX, maxY])
+
+    return np.linalg.norm(max-min, ord=2)
 
 orgInd = 17
 refInd = 21

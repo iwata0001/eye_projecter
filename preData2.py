@@ -20,7 +20,7 @@ from utlLib import isExeption
 # データの平均を求めてデータから引く（平均を0にする）
 
 
-N = 143
+N = 109
 newImgs = []
 
 for i in range(N):
@@ -39,7 +39,7 @@ for i in range(N):
     newImgs.append(newImg)
 
 #######################################################################################################################################
-
+"""
 # 多重ウェーブレット版 データ加工してベクトル化
 # 未使用
 level = 2
@@ -128,6 +128,7 @@ avgEyeVec = avgEye.reshape(48*64*3)
 handlesAvgVec = pre.handlesAvg.reshape(pre.H*1*2) * handCoeff
 avgEyeData = np.append(avgEyeVec, handlesAvgVec)
 eyeDatasCenter = eyeDatas - avgEyeData
+"""
 
 #######################################################################################################################################################################################
 
@@ -139,7 +140,7 @@ eyeDatas_v1 = []
 handleDatas_v1 = []
 vectorDatas_v1 = []
 handCoeff_v1 = 150
-vecCoeff = 10
+vecCoeff = 1
 eyeCoeff = 1
 
 datanum = 0
@@ -170,11 +171,14 @@ for i in range(N):
     
     eyeData_v1 = np.append(eyeVec, handleVec)
     eyeData_v1 = np.append(eyeData_v1, vectorVec)
+
+    print(eyeVec.shape, handleVec.shape, vectorVec.shape)
     
     eyeDatas_v1.append(eyeData_v1)
     handleDatas_v1.append(handleVec)
 
     datanum = datanum+1
+print("datanum",datanum)
 
 
 eyeDatas_v1a = np.array(eyeDatas_v1)
@@ -184,4 +188,36 @@ avgdata_v1 = np.mean(eyeDatas_v1a, axis=0)
 #print(avgdata_v1.shape)
 
 eyeDatasCenter_v1a = eyeDatas_v1a - avgdata_v1
-#print(eyeDatasCenter_v1a)
+
+# ランダムに拡大したデータを追加
+"""
+for d in eyeDatasCenter_v1a:
+    img, hanVec = np.split(d,[9216])
+    for i in range(9):
+        rand = np.random.rand() + 0.5
+        randVec = np.append(img, hanVec*rand)
+        randVec = np.array([randVec])
+        eyeDatasCenter_v1a = np.append(eyeDatasCenter_v1a, randVec, axis=0)
+print(eyeDatasCenter_v1a.shape, randVec.shape)
+"""
+
+
+# テストの正解データ用
+testVectors = []
+for i in range(143):
+    
+    path = 'json_data/' + str(i+1).zfill(3) + '_v2.json'
+    if not os.path.isfile(path):
+        testVectors.append(None)
+        continue
+
+    vecdata = None
+    with open('json_data/'+str(i+1).zfill(3)+'_v2.json') as f:
+        vecdata = json.load(f)
+    vectorVec = vecdata['shapeUOx']+ vecdata['shapeUOy']+ vecdata['shapeUIx']+ vecdata['shapeUIy']+ vecdata['shapeLOx']+ vecdata['shapeLOy']+ vecdata['shapeLIx']+ vecdata['shapeLIy']
+    for j in range(len(vecdata['pplXY'])):
+        vectorVec = vectorVec + vecdata['pplXY'][j]
+
+    vectorVec = np.array(vectorVec)
+    testVectors.append(vectorVec)
+    

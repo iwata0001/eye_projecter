@@ -73,6 +73,87 @@ A = np.array(A)
 A = A.T
 P = np.linalg.inv(A.T @ A) @ A.T
 
+def project_eigSpace2(texture, handles, contRate=0.95):
+    #累積寄与率がcontRateになるまで固有ベクトルを並べる
+    temp = 0
+    D = 0
+
+    for n in range(len(eigVal)):
+        temp += eigVal[indices[n]]
+        if temp / eigValSum > contRate:
+            D = n
+            break
+    print("model dimension:", D)
+    print("contRate:",temp / eigValSum)
+
+    A = []
+    for n in range(D):
+        A.append(eigVec[indices[n]])
+
+    # 並べた固有ベクトルで張られる空間に点を正射影する行列Pを求める
+    A = np.array(A)
+    A = A.T
+    Q = A @ np.linalg.inv(A.T @ A) @ A.T - np.identity(9290)
+
+    print(A.shape, Q.shape)
+
+    Qi, Qj = np.split(Q,[48*64*3+13*1*2],axis=1)
+
+    tex = texture
+    eyeMesh = mesh2(64,48, tex)
+    eyeMesh.setHandlesOrg(handles)
+    eyeMesh.setHandlesDfm(pre.handlesAvg)
+    eyeMesh.applyHandles()
+    img, imgMask= eyeMesh.deform(outputMask=True)
+
+    avgImgData, avgHandleData, avgVectorData = np.split(pre2.avgdata_v1, [48*64*3, 48*64*3+13*1*2])
+
+    eyeVec = img.reshape(48*64*3) * eyeCoeff - avgImgData
+    handleVec = handles.reshape(pre.H*1*2) * handCoeff - avgHandleData
+    knownVec = np.append(eyeVec, handleVec)
+    beta = Qi @ knownVec * (-1)
+
+    newVectorVec = np.linalg.inv(Qj.T @ Qj) @ Qj.T @ beta
+
+    completeVec = np.append(knownVec, newVectorVec)
+
+    c = np.linalg.inv(A.T @ A) @ A.T @ completeVec
+
+    newDataVec = A @ c
+
+    print(newDataVec.shape)
+
+    newDataVec = newDataVec+pre2.avgdata_v1
+    newImg, newHandles, newVector = np.split(newDataVec, [48*64*3, 48*64*3+13*1*2])
+
+    newImg = newImg / eyeCoeff
+    newImg = newImg.reshape(48,64,3)
+    newImg = np.clip(newImg, 0, 255)
+    newImg = newImg.astype(np.uint8)
+
+    newHandles = newHandles / handCoeff
+    newHandles = newHandles.reshape(pre.H,1,2)
+
+    newMesh = mesh2(64,48, newImg)
+    newMesh.setHandlesOrg(pre.handlesAvg)
+    newMesh.setHandlesDfm(newHandles)
+    #newMesh.setHandlesDfm(handles)
+    newMesh.applyHandles()
+
+    newEye, newEyeMask = newMesh.deform(outputMask=True)
+
+    return newEye, newHandles
+
+
+i = 120
+tex = cv2.imread('data_eyes_test/'+str(i)+'.png')
+handle = pre.handlesArr[i-1]
+newEye, __newHandle = project_eigSpace2(tex, handle)
+cv2.imwrite('C:/pics/eigSpace/eigSpaceProject'+str(i)+'.png', newEye)
+
+
+    
+
 def project_eigSpace(texture, handles, contRate=0.95):
     #累積寄与率がcontRateになるまで固有ベクトルを並べる
     temp = 0
@@ -93,7 +174,7 @@ def project_eigSpace(texture, handles, contRate=0.95):
     # 並べた固有ベクトルで張られる空間に点を正射影する行列Pを求める
     A = np.array(A)
     A = A.T
-    P = np.linalg.inv(A.T @ A) @ A.T
+    P = np.linalg.pinv(A.T @ A) @ A.T
 
     print(A.shape, P.shape)
 
@@ -125,7 +206,13 @@ def project_eigSpace(texture, handles, contRate=0.95):
     c = alpha_proj - alpha
 
     for j in range(c.shape[0]):
-        newxElm = np.clip(np.array([c[j]]), (-1)*np.sqrt(eigVal[indices[j]]), np.sqrt(eigVal[indices[j]]))
+        if j < 6:
+            coeff = 5
+        elif j < 20:
+            coeff = 3
+        else:
+            coeff = 0.5
+        newxElm = np.clip(np.array([c[j]]), (-1*coeff)*np.sqrt(eigVal[indices[j]]), coeff*np.sqrt(eigVal[indices[j]]))
         if c[j] != newxElm[0]: # 主成分方向の分散に対して離れているものを無視（平均から離れすぎないようにする）
             c[j] = 0
     newDataVec = A @ c
@@ -156,8 +243,8 @@ def project_eigSpace(texture, handles, contRate=0.95):
 for i in range(110,121):
     tex = cv2.imread('data_eyes_test/'+str(i)+'.png')
     handle = pre.handlesArr[i-1]
-    newEye, newHandles = project_eigSpace(tex,handle,contRate=0.95)
-    cv2.imwrite('C:/pics/eigSpace/eigSpaceProject'+str(i)+'.png', newEye)
+    #newEye, newHandles = project_eigSpace(tex,handle,contRate=0.95)
+    #cv2.imwrite('C:/pics/eigSpace/eigSpaceProject'+str(i)+'.png', newEye)
 
 
 def project_withVector(texture, handles, testNumber=None, outputErrors=False, contRate=0.75, refs=None, isSelectEig=False): # refs = [contRate=double, img=(48,64,3), handle=(13,1,2)]

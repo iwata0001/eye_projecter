@@ -16,7 +16,7 @@ import pywt
 import os
 from PIL import ImageTk, Image
 
-from projectInput_vector import project_withVector
+from projectInput_vector import project_withVector, project_eigSpace, project_eigSpace2
 import DmeshLib as DMesh
 from utlLib import transferColor, createOvalEZ, blendPreview, calcHandleDiff
 import preData as pre
@@ -128,18 +128,18 @@ class Application(tkinter.Frame): #GUI
         self.contRateSelect.grid(row=2, column=3)
 
         self.refCanvas2 = tkinter.Canvas(self, bg='white', width=64, height=48)
-        self.refCanvas2.grid(row=3, column=4)
+        #self.refCanvas2.grid(row=3, column=4)
 
         self.refInd2 = tkinter.IntVar()
         self.refInd2.set(1)
         self.refIndSelect2 = tkinter.Spinbox(self, from_=1, to=143, increment=1, textvariable=self.refInd2, command=self.updateRefImg2)
-        self.refIndSelect2.grid(row=4, column=4)
+        #self.refIndSelect2.grid(row=4, column=4)
         self.updateRefImg2()
 
         self.contRate2 = tkinter.DoubleVar()
         self.contRate2.set(0.3)
         self.contRateSelect2 = tkinter.Scale(self, label='contRate', from_=0.3, to=0.99, resolution=0.01, orient=tkinter.HORIZONTAL, variable=self.contRate2)
-        self.contRateSelect2.grid(row=5, column=4)
+        #self.contRateSelect2.grid(row=5, column=4)
 
         self.previewCanvas = tkinter.Canvas(self, bg='white', width=300, height=300)
         self.previewCanvas.grid(row=3, column=5, rowspan=3, columnspan=3)
@@ -183,13 +183,16 @@ class Application(tkinter.Frame): #GUI
         self.outputCanvas.grid(row=7, column=0)
 
         self.outputCanvas2 = tkinter.Canvas(self, bg='white', width=128, height=96)
-        self.outputCanvas2.grid(row=7, column=1)
+        self.outputCanvas2.grid(row=7, column=3)
 
         self.outputCanvas3 = tkinter.Canvas(self, bg='white', width=128, height=96)
-        self.outputCanvas3.grid(row=7, column=2)
+        self.outputCanvas3.grid(row=7, column=4)
 
         self.outputCanvas4 = tkinter.Canvas(self, bg='white', width=128, height=96)
-        self.outputCanvas4.grid(row=7, column=3)
+        self.outputCanvas4.grid(row=7, column=1)
+
+        self.outputCanvas5 = tkinter.Canvas(self, bg='white', width=128, height=96)
+        self.outputCanvas5.grid(row=7, column=2)
 
         self.EVGUI = None
 
@@ -275,6 +278,7 @@ class Application(tkinter.Frame): #GUI
                     eye, handle, mask, _err = project_withVector(pngImg, handles,contRate=cont)
                     cv2.imwrite('output/contRateTest/'+self.textName.get()+str(cont)+'.png', eye)
             else:
+                newEye_eigSpace, __nh = project_eigSpace2(pngImg, handles, contRate=self.contRate.get())
                 newEye_allEig, __newHandles_wv, __newEyeMask_wv , _err= project_withVector(pngImg, handles,contRate=self.contRate.get(),refs=self.refs,isSelectEig=False)
                 newEye_wv, newHandles_wv, newEyeMask_wv , _err= project_withVector(pngImg, handles,contRate=self.contRate.get(),refs=self.refs,isSelectEig=True)
                 for cont in conts:
@@ -286,6 +290,7 @@ class Application(tkinter.Frame): #GUI
             cv2.imwrite('output/'+self.textName.get()+'_input.png', pngImg)
             cv2.imwrite('output/'+self.textName.get()+'_wv_output.png', newEye_wv)
             cv2.imwrite('output/outputEyeImg.png', newEye_wv)
+            cv2.imwrite('output/outputEyeImg_eigSpace.png', newEye_eigSpace)
             cv2.imwrite('output/outputEyeImg_allEig.png', newEye_allEig)
             cv2.imwrite('output/projectedSketch.png', newEye_wv)
             cv2.imwrite('temp_img/eyeMask.png', newEyeMask_wv)
@@ -309,6 +314,13 @@ class Application(tkinter.Frame): #GUI
             img = img.resize((128,96))
             self.outImg_allEig = ImageTk.PhotoImage(img)
             self.outputCanvas4.create_image(64,48,image=self.outImg_allEig)
+
+            self.outputCanvas5.delete(tkinter.ALL)
+            url = 'output/outputEyeImg_eigSpace.png'
+            img = Image.open(url)
+            img = img.resize((128,96))
+            self.outImg_eigSpace = ImageTk.PhotoImage(img)
+            self.outputCanvas5.create_image(64,48,image=self.outImg_eigSpace)
 
             self.test_canvas.delete(self.bg)
 

@@ -25,6 +25,16 @@ import time
 import DmeshLib
 from utlLib import createOvalEZ
 
+def LOinside(n):
+    if n==4:
+        return 0
+    elif n==5:
+        return 4
+    elif n==6:
+        return 5
+    else:
+        return None
+
 def colorCord(R,G,B):
     return('#'+ format(R, '02x')+ format(G, '02x')+ format(B, '02x'))
 
@@ -431,7 +441,7 @@ class Application_EVGUI(tkinter.Frame):
         self.colButton.grid(row=5, column=1)
 
         self.eyeBlackRad = tkinter.IntVar()
-        self.eyeBlackRad.set(50)
+        self.eyeBlackRad.set(0)
         self.eyeBlackScale = tkinter.Scale(self, variable=self.eyeBlackRad, command=self.updateEyeBlack, orient='horizontal', from_=0, to=100)
         self.eyeBlackScale.grid(row=5, column=2)
 
@@ -453,14 +463,16 @@ class Application_EVGUI(tkinter.Frame):
         self.refInd.set(0)
         self.selRefInd = tkinter.Spinbox(self, from_=1, to=143, increment=1, textvariable=self.refInd, command=self.dispRefImg)
         self.selRefInd.grid(row=6, column=0)
+        self.dispRefImg()
 
         self.refVisBtn = tkinter.Button(self, text='visible', command=self.toggleRefVisible)
         self.refVisBtn.grid(row=6, column=1)
 
         self.refTransparency = tkinter.IntVar()
-        self.refTransparency.set(128)
+        self.refTransparency.set(0)
         self.refTraScale = tkinter.Scale(self, variable=self.refTransparency, command=self.updateTransparency, orient='horizontal', from_=0, to=255)
         self.refTraScale.grid(row=6, column=2)
+        self.updateTransparency()
 
         #tkinter.Spinbox(self, from_=1, to=100, increment=1, textvariable=self.refInd, command=self.updateRefItr)
         self.refItr = tkinter.IntVar()
@@ -476,22 +488,12 @@ class Application_EVGUI(tkinter.Frame):
         self.eyeColorBtn = tkinter.Button(self, text='eyeColor', command=self.applyEyeColor)
         self.eyeColorBtn.grid(row=7, column=0)
 
-        self.eyeCol_1 = np.array([100,100,100])
-        #self.iris_tex = circleTex(self.irisRad, np.array([100,100,100]), self.eyeCol_1, np.array([-0,-0,-0])*70, np.array([0,0,0])*120)
-        self.iris_tex = circleTex_2(self.irisRad, 50, np.array([128,128,128]), np.array([16,16,16]))
-        cv2.imwrite('temp_img/iris_tex.png', self.iris_tex)
-
-        self.irisTex = tkinter.PhotoImage(file='temp_img/iris_tex.png')
-        self.eye_canvas.create_image(2,2,image=self.irisTex,anchor=tkinter.NW)
 
         #self.dispRefImg()
-        ref = Image.open('output/_wv_output.png')
-        ref.putalpha(128)
+        ref = Image.open('output/outputEyeImg.png')
+        ref.putalpha(255)
         ref = ref.resize((640, 480))
         ref.save('temp_img/temp_ref.png')
-        self.touka = tkinter.PhotoImage(file='temp_img/temp_ref.png')
-        self.test_canvas.create_image(2,2,image=self.touka,anchor=tkinter.NW,tag="refImg")
-
         self.touka = tkinter.PhotoImage(file='temp_img/temp_ref.png')
         self.test_canvas.create_image(2,2,image=self.touka,anchor=tkinter.NW,tag="refImg")
 
@@ -705,10 +707,14 @@ class Application_EVGUI(tkinter.Frame):
 
     def applyEyeColor(self):
         dfmTex = cv2.imread('temp_img/iris_tex_dfm.png')
+        dfmTex = cv2.resize(dfmTex, (64,48))
         i = self.refInd.get()
         orgTex = cv2.imread('data_eyes_test/'+str(i).zfill(3)+'.png')
-        orgTex = cv2.resize(orgTex, (640, 480))
-        eyeRef = cv2.imread('temp_img/temp_ref.png')
+        #orgTex = cv2.resize(orgTex, (640, 480))
+        eyeRef = cv2.imread('output/_wv_output.png')
+        #eyeRef = cv2.imread('data_eyes_test/'+str(self.refItr.get()).zfill(3)+'.png')
+        #eyeRef = cv2.imread('data_eyes_test/'+str(i).zfill(3)+'.png')
+        
         colorEyeTex = np.copy(dfmTex)
 
         eyeCol1 = np.array([0,0,0])
@@ -718,8 +724,8 @@ class Application_EVGUI(tkinter.Frame):
         numFilt2 = 0
         numFilt3 = 0
 
-        for i in range(480):
-            for j in range(640):
+        for i in range(48):
+            for j in range(64):
                 if dfmTex[i][j][0] == 255 and dfmTex[i][j][1] == 0:
                     numFilt1 += 1
                     eyeCol1 = eyeCol1 + eyeRef[i][j]
@@ -815,8 +821,7 @@ class Application_EVGUI(tkinter.Frame):
         self.touka = tkinter.PhotoImage(file='temp_img/temp_ref.png')
         self.test_canvas.create_image(2,2,image=self.touka,anchor=tkinter.NW,tag="refImg")
 
-    def updateTransparency(self, event):
-        print(event)
+    def updateTransparency(self, event=None):
         self.test_canvas.delete("refImg")
         ref = Image.open('temp_img/temp_ref.png')
         ref.putalpha(self.refTransparency.get())
@@ -903,7 +908,7 @@ class Application_EVGUI(tkinter.Frame):
         self.reloadPpl()
         sortDrawOrder(self.test_canvas, self.tagOrder)
 
-    def loadURL(self, url):
+    def loadURL(self, url, polygon = None):
         data = None
         i = self.refInd.get()
         with open(url) as f:
@@ -913,6 +918,10 @@ class Application_EVGUI(tkinter.Frame):
         shapeUI = [data['shapeUIx'], data['shapeUIy']]
         shapeLO = [data['shapeLOx'], data['shapeLOy']]
         shapeLI = [data['shapeLIx'], data['shapeLIy']]
+        LOs = [0, 1]
+        for l in LOs: # 目頭側の下まつげを強制的に内側に
+            shapeLO[0][l] = shapeLI[0][l]+5
+            shapeLO[1][l] = shapeLI[1][l]-5
         self.eye1 = eye(shapeUO, shapeUI, shapeLO, shapeLI, self.N)
         self.handlePpl = data['pplXY']
 

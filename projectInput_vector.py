@@ -18,12 +18,21 @@ import preData2 as pre2
 import DmeshLib as DMesh
 from utlLib import calcHandleDiff
 
+# 主成分の変化による画像の変化量 i番めの主成分が+-に振れたときに画像がどれくらい変化するかを示す
+MPdiffs = [12532.252, 5648.708, 5056.236, 3802.8079, 2766.4272, 5852.853, 3787.906, 3973.0425, 3225.1687, 2532.366, 3392.5527, 2676.435, 2152.957, 3320.0884, 2275.8564, 2331.2412, 2525.0254, 2117.9512, 1736.1089, 1977.7578, 1823.0757, 1475.5413, 1559.0629, 1340.4797, 1418.5654, 983.4246, 1375.1382, 1186.6836, 1164.0645, 1151.7808, 1333.0532, 1057.6473, 993.62213, 930.4961, 1089.5468, 1109.5305, 978.5346, 963.71313, 1084.7765, 941.3655, 841.4113, 991.9471, 835.6237, 981.64404, 1017.64777, 879.37195, 975.25024, 823.7585, 1024.5712, 839.90356, 780.5626, 788.0761, 714.30316, 766.477, 713.1704, 720.0049, 677.66956, 712.28925, 664.97516, 681.1755, 561.4161, 671.5043, 633.45166, 600.64465, 644.67975, 585.8285, 643.76624, 541.5801, 649.7792, 517.7702, 538.6353, 587.26056, 572.3504, 518.7032, 492.10364, 540.3536, 547.58746, 566.7389, 466.06546, 494.00708, 529.57153, 443.5617, 468.54028, 486.79666, 431.39658, 441.53595, 458.9902, 419.60577, 483.81607, 383.45404, 407.81735, 384.3579, 552.59296, 427.91705, 442.94922, 435.564, 337.36627, 364.6135, 391.67587, 5.7445626]
+
+LabMode = pre2.LabMode
+
 # 主成分分析 固有ベクトルを読み込んで固有値順に
 eyeCoeff = pre2.eyeCoeff
 handCoeff = pre2.handCoeff_v1
 vecCoeff = pre2.vecCoeff
-eigVal = np.load('saves/100data_eigval.npy')
-eigVec = np.load('saves/100data_eigvec.npy')
+if LabMode:
+    eigVal = np.load('saves/100dataLab_eigval.npy')
+    eigVec = np.load('saves/100dataLab_eigvec.npy')
+else:
+    eigVal = np.load('saves/100data_eigval.npy')
+    eigVec = np.load('saves/100data_eigvec.npy')
 indices = np.argsort(eigVal)[::-1]
 eigValSum = np.sum(eigVal)
 #print("eigvalsum", eigValSum)
@@ -64,8 +73,94 @@ A = np.array(A)
 A = A.T
 P = np.linalg.inv(A.T @ A) @ A.T
 
+def project_eigSpace(texture, handles, contRate=0.95):
+    #累積寄与率がcontRateになるまで固有ベクトルを並べる
+    temp = 0
+    D = 0
 
-def project_withVector(texture, handles, testNumber=None, outputErrors=False, contRate=0.75, refs=None): # refs = [contRate=double, img=(48,64,3), handle=(13,1,2)]
+    for n in range(len(eigVal)):
+        temp += eigVal[indices[n]]
+        if temp / eigValSum > contRate:
+            D = n
+            break
+    print("model dimension:", D)
+    print("contRate:",temp / eigValSum)
+
+    A = []
+    for n in range(D):
+        A.append(eigVec[indices[n]])
+
+    # 並べた固有ベクトルで張られる空間に点を正射影する行列Pを求める
+    A = np.array(A)
+    A = A.T
+    P = np.linalg.inv(A.T @ A) @ A.T
+
+    print(A.shape, P.shape)
+
+    Pi, Pj = np.split(P,[48*64*3+13*1*2],axis=1)
+
+    print(Pi.shape, Pj.shape)
+
+    tex = texture
+    eyeMesh = mesh2(64,48, tex)
+    eyeMesh.setHandlesOrg(handles)
+    eyeMesh.setHandlesDfm(pre.handlesAvg)
+    eyeMesh.applyHandles()
+    img, imgMask= eyeMesh.deform(outputMask=True)
+
+    avgImgData, avgHandleData, avgVectorData = np.split(pre2.avgdata_v1, [48*64*3, 48*64*3+13*1*2])
+
+    eyeVec = img.reshape(48*64*3) * eyeCoeff - avgImgData
+    handleVec = handles.reshape(pre.H*1*2) * handCoeff - avgHandleData
+    knownVec = np.append(eyeVec, handleVec)
+    alpha = Pi @ knownVec * (-1)
+
+    print(alpha.shape)
+
+    # Pjを構成する列ベクトルで張られる空間にalphaを投影
+    alpha_proj = Pj @ np.linalg.inv(Pj.T @ Pj) @ Pj.T @ alpha
+
+    print(alpha_proj.shape)
+
+    c = alpha_proj - alpha
+
+    for j in range(c.shape[0]):
+        newxElm = np.clip(np.array([c[j]]), (-1)*np.sqrt(eigVal[indices[j]]), np.sqrt(eigVal[indices[j]]))
+        if c[j] != newxElm[0]: # 主成分方向の分散に対して離れているものを無視（平均から離れすぎないようにする）
+            c[j] = 0
+    newDataVec = A @ c
+
+    print(newDataVec.shape)
+
+    newDataVec = newDataVec+pre2.avgdata_v1
+    newImg, newHandles, newVector = np.split(newDataVec, [48*64*3, 48*64*3+13*1*2])
+
+    newImg = newImg / eyeCoeff
+    newImg = newImg.reshape(48,64,3)
+    newImg = np.clip(newImg, 0, 255)
+    newImg = newImg.astype(np.uint8)
+
+    newHandles = newHandles / handCoeff
+    newHandles = newHandles.reshape(pre.H,1,2)
+
+    newMesh = mesh2(64,48, newImg)
+    newMesh.setHandlesOrg(pre.handlesAvg)
+    newMesh.setHandlesDfm(newHandles)
+    #newMesh.setHandlesDfm(handles)
+    newMesh.applyHandles()
+
+    newEye, newEyeMask = newMesh.deform(outputMask=True)
+
+    return newEye, newHandles
+
+for i in range(110,121):
+    tex = cv2.imread('data_eyes_test/'+str(i)+'.png')
+    handle = pre.handlesArr[i-1]
+    newEye, newHandles = project_eigSpace(tex,handle,contRate=0.95)
+    cv2.imwrite('C:/pics/eigSpace/eigSpaceProject'+str(i)+'.png', newEye)
+
+
+def project_withVector(texture, handles, testNumber=None, outputErrors=False, contRate=0.75, refs=None, isSelectEig=False): # refs = [contRate=double, img=(48,64,3), handle=(13,1,2)]
 
     #累積寄与率がcontRateになるまで固有ベクトルを並べる
     temp = 0
@@ -131,9 +226,12 @@ def project_withVector(texture, handles, testNumber=None, outputErrors=False, co
         img_ref, imgMask_ref= eyeMesh_ref.deform(outputMask=True)
 
     cv2.imwrite('temp_img/shapeNormalizedRGBSketch.png',img)
+    if LabMode:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2LAB) # Labに変換　固有値データを置き換えてください
     avgEyeData = pre2.avgdata_v1
 
     avgImgData, avgHandleData, avgVectorData = np.split(avgEyeData, [48*64*3, 48*64*3+13*1*2])
+
     #print(avgEyeData.shape, avgImgData.shape, avgHandleData.shape, avgVectorData.shape)
     vectorTemp = avgVectorData
     vectorTemp = np.array(vectorTemp)
@@ -176,8 +274,28 @@ def project_withVector(texture, handles, testNumber=None, outputErrors=False, co
         # 投影
         if D != 0:
             x = P @ eyeDataCenter
-            p = A @ x
 
+            if i == 99 and isSelectEig:
+                print("x.size",x.size)
+                temp = 0
+                for j in range(x.size):
+                    temp += eigVal[indices[j]]
+                    if j < 6:
+                        c = 5
+                    elif j < 20:
+                        c = 3
+                    else:
+                        c = 0.5
+                    print(j, "std:", np.sqrt(eigVal[indices[j]]), x[j], end="")
+                    newxElm = np.clip(np.array([x[j]]), (-1*c)*np.sqrt(eigVal[indices[j]]), c*np.sqrt(eigVal[indices[j]]))
+                    if x[j] != newxElm[0]: # 主成分方向の分散に対して離れているものを無視（平均から離れすぎないようにする）
+                        x[j] = 0
+                        temp -= eigVal[indices[j]]
+                        print(" ignore", end="")
+                    print("")
+                print("actual contRate:",temp/eigValSum)
+            p = A @ x
+                    
             p = avgEyeData + p
             newImg, newHandles, newVector = np.split(p, [48*64*3, 48*64*3+13*1*2])
         else:
@@ -288,9 +406,11 @@ def project_withVector(texture, handles, testNumber=None, outputErrors=False, co
     #plt.show()
     newImg = newImg / eyeCoeff
     newImg = newImg.reshape(48,64,3)
-    newImg = newImg + refImgDetail
+    #newImg = newImg + refImgDetail
     newImg = np.clip(newImg, 0, 255)
     newImg = newImg.astype(np.uint8)
+    if LabMode:
+        newImg = cv2.cvtColor(newImg, cv2.COLOR_LAB2BGR) # LabからBGRに戻す　固有値データ置き換え
     cv2.imwrite('temp_img/shapeNormalizedOutputImg.png', newImg)
 
     newHandles = newHandles / handCoeff
@@ -337,7 +457,10 @@ def project_withVector(texture, handles, testNumber=None, outputErrors=False, co
     # 画像部分の誤差計算
     if testNumber != None:
         newImgLab = cv2.cvtColor(newImg, cv2.COLOR_BGR2LAB)
-        imgLab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+        imgLab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB) 
+        if LabMode:
+            imgLab = img
+        
         #cv2.imshow("Image1", img)
         #cv2.imshow("Image2", newImg)
         #cv2.waitKey()
@@ -442,6 +565,7 @@ def project_withVector(texture, handles, testNumber=None, outputErrors=False, co
         print("outlineErr(pixel):",outlErr)
         print("handleDiff(pixel),(ratio)", anchorErrPixcel, anchorErrRatio)
         errors = [testNumber+1, imgErrRGB, psnrRGB, imgErrLab, psnrL, psnrab, outlErr, anchorErrPixcel, anchorErrRatio]
+        errors = [testNumber+1, imgErrLab, anchorErrRatio, outlErr]
         errors = np.array(errors)
         
         resultImg = np.append(texture,newEye,axis=1)

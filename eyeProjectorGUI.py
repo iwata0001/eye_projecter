@@ -53,6 +53,7 @@ class Application(tkinter.Frame): #GUI
         self.setup()
         self.handles = []
         self.handleNum = 0
+        self.generateNum = 0
 
     def create_widgets(self): #ウィジェットを並べる
         self.vr = tkinter.IntVar()
@@ -122,7 +123,7 @@ class Application(tkinter.Frame): #GUI
         self.updateTestImg()
 
         self.contRate = tkinter.DoubleVar()
-        self.contRate.set(0.80)
+        self.contRate.set(0.95)
         self.contRateSelect = tkinter.Scale(self, label='contRate', from_=0.3, to=0.99, resolution=0.01, orient=tkinter.HORIZONTAL, variable=self.contRate)
         self.contRateSelect.grid(row=2, column=3)
 
@@ -187,6 +188,9 @@ class Application(tkinter.Frame): #GUI
         self.outputCanvas3 = tkinter.Canvas(self, bg='white', width=128, height=96)
         self.outputCanvas3.grid(row=7, column=2)
 
+        self.outputCanvas4 = tkinter.Canvas(self, bg='white', width=128, height=96)
+        self.outputCanvas4.grid(row=7, column=3)
+
         self.EVGUI = None
 
         self.handlePosCanvas.delete(tkinter.ALL)
@@ -214,6 +218,7 @@ class Application(tkinter.Frame): #GUI
         self.test_canvas.delete(tkinter.ALL)
         self.handles = []
         self.handleNum = 0
+        self.generateNum = 0
 
     def save_canvas(self): #入力を投影して出力を画像で保存 必ずgenerateHandle_EMを実行してから
         if self.mode.get() == 1:
@@ -253,7 +258,7 @@ class Application(tkinter.Frame): #GUI
 
             afin_matrix = np.float32([[1,0,dx],[0,1,dy]])
             cv2.imwrite('output/idoumae.png', pngImg)
-            pngImg = cv2.warpAffine(pngImg, afin_matrix, (640,480), borderValue = (255,255,255))
+            pngImg = cv2.warpAffine(pngImg, afin_matrix, (640,480), borderValue = (230,240,250))
             cv2.imwrite('output/idougo.png', pngImg)
             print("dx dy: ",dx, dy)
             pngImg = cv2.resize(pngImg, (64,48))
@@ -262,16 +267,27 @@ class Application(tkinter.Frame): #GUI
             #pngImg = cv2.resize(pngImg, (64,48))
             
             #newEye = project(pngImg, handles)
+            conts = [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99]
+            conts = []
             if self.mode.get() == 1:
-                newEye_wv, newHandles_wv, newEyeMask_wv , self.eyeErrors= project_withVector(pngImg, handles,testNumber=self.testInd.get()-1,outputErrors=True,contRate=self.contRate.get())
+                newEye_wv, newHandles_wv, newEyeMask_wv , self.eyeErrors= project_withVector(pngImg, handles,testNumber=self.testInd.get()-1,outputErrors=True,contRate=self.contRate.get(), isSelectEig=True)
+                for cont in conts:
+                    eye, handle, mask, _err = project_withVector(pngImg, handles,contRate=cont)
+                    cv2.imwrite('output/contRateTest/'+self.textName.get()+str(cont)+'.png', eye)
             else:
-                newEye_wv, newHandles_wv, newEyeMask_wv , _err= project_withVector(pngImg, handles,contRate=self.contRate.get(),refs=self.refs)
+                newEye_allEig, __newHandles_wv, __newEyeMask_wv , _err= project_withVector(pngImg, handles,contRate=self.contRate.get(),refs=self.refs,isSelectEig=False)
+                newEye_wv, newHandles_wv, newEyeMask_wv , _err= project_withVector(pngImg, handles,contRate=self.contRate.get(),refs=self.refs,isSelectEig=True)
+                for cont in conts:
+                    eye, handle, mask, _err = project_withVector(pngImg, handles,contRate=cont,refs=self.refs)
+                    cv2.imwrite('output/contRateTest/'+self.textName.get()+str(cont)+'.png', eye)
             self.outputHandles = newHandles_wv
 
             #cv2.imwrite('output/'+self.textName.get()+'_output.png', newEye)
             cv2.imwrite('output/'+self.textName.get()+'_input.png', pngImg)
             cv2.imwrite('output/'+self.textName.get()+'_wv_output.png', newEye_wv)
             cv2.imwrite('output/outputEyeImg.png', newEye_wv)
+            cv2.imwrite('output/outputEyeImg_allEig.png', newEye_allEig)
+            cv2.imwrite('output/projectedSketch.png', newEye_wv)
             cv2.imwrite('temp_img/eyeMask.png', newEyeMask_wv)
 
             # テスト用正解データ（アンカーポイント）
@@ -286,6 +302,15 @@ class Application(tkinter.Frame): #GUI
             img = img.resize((128,96))
             self.outImg = ImageTk.PhotoImage(img)
             self.outputCanvas.create_image(64,48,image=self.outImg)
+
+            self.outputCanvas4.delete(tkinter.ALL)
+            url = 'output/outputEyeImg_allEig.png'
+            img = Image.open(url)
+            img = img.resize((128,96))
+            self.outImg_allEig = ImageTk.PhotoImage(img)
+            self.outputCanvas4.create_image(64,48,image=self.outImg_allEig)
+
+            self.test_canvas.delete(self.bg)
 
         else:
             print("The number of handles is not 13.")
@@ -320,18 +345,26 @@ class Application(tkinter.Frame): #GUI
 
         with open(path_w, mode='w') as f:
             s = 'testNumber&RGB&psnrRGB&Lab&psnrL&psnrab&outl&anchorPix&anchorR\\\\ \\hline\n'
+            s = 'testNumber&Lab&anchor&outl\\\\ \\hline\n'
             f.write(s)
             for err in errorArray:
                 s1 = r"\begin{minipage}{0.15\linewidth}"
                 s2 = r"\centering"
                 s3 = r"\includegraphics[width=\linewidth]{./fig/test"+str(int(err[0]))+r".png}"
                 s4 = r"\end{minipage} &"
-                s5 = str(err[1]) + '&' + str(err[2]) + '&' + str(err[3]) + '&' + str(err[4]) + '&' + str(err[5]) + '&' + str(err[6]) + '&' + str(err[7]) + '&' + str(err[8]) + '\\\\\n'
-                s = s1 + '\n' + s2 + '\n' + s3 + '\n' + s4 + '\n' + s5
+                ss1 = r"\begin{minipage}{0.15\linewidth}"
+                ss2 = r"\centering"
+                ss3 = r"\includegraphics[width=\linewidth]{./fig/outline/test"+str(int(err[0]))+r".png}"
+                ss4 = r"\end{minipage} &"
+                #s5 = str(err[1]) + '&' + str(err[2]) + '&' + str(err[3]) + '&' + str(err[4]) + '&' + str(err[5]) + '&' + str(err[6]) + '&' + str(err[7]) + '&' + str(err[8]) + '\\\\\n'
+                s5 = str(err[1]) + '&' + str(err[2]) + '&' + str(err[3]) + '\\\\\n'
+                s = s1 + '\n' + s2 + '\n' + s3 + '\n' + s4 + '\n' + ss1 + '\n' + ss2 + '\n' + ss3 + '\n' + ss4 + '\n' + s5
                 f.write(s)
-            s = 'avg&'+str(avgErr[1])+'&'+str(avgErr[2])+'&'+str(avgErr[3])+'&'+str(avgErr[4])+'&'+str(avgErr[5])+'&'+str(avgErr[6])+'&'+str(avgErr[7])+'&'+str(avgErr[8])+'\\\\\n'
+            #s = 'avg&'+str(avgErr[1])+'&'+str(avgErr[2])+'&'+str(avgErr[3])+'&'+str(avgErr[4])+'&'+str(avgErr[5])+'&'+str(avgErr[6])+'&'+str(avgErr[7])+'&'+str(avgErr[8])+'\\\\\n'
+            s = 'avg&'+str(avgErr[1])+'&'+str(avgErr[2])+'&'+str(avgErr[3])+'\\\\\n'
             f.write(s)
-            s = 'std&'+str(stdErr[1])+'&'+str(stdErr[2])+'&'+str(stdErr[3])+'&'+str(stdErr[4])+'&'+str(stdErr[5])+'&'+str(stdErr[6])+'&'+str(stdErr[7])+'&'+str(stdErr[8])+'\\\\\n'
+            #s = 'std&'+str(stdErr[1])+'&'+str(stdErr[2])+'&'+str(stdErr[3])+'&'+str(stdErr[4])+'&'+str(stdErr[5])+'&'+str(stdErr[6])+'&'+str(stdErr[7])+'&'+str(stdErr[8])+'\\\\\n'
+            s = 'std&'+str(stdErr[1])+'&'+str(stdErr[2])+'&'+str(stdErr[3])+'\\\\\n'
             f.write(s)
     
     def paint(self, event): #色と太さを選んで絵をかく
@@ -439,16 +472,17 @@ class Application(tkinter.Frame): #GUI
     def addDetails(self):
         tmpDiff = 1000000000
         handleIndex = -1
-        for i in range(len(pre.handlesArr)):
+        for i in range(109):#,len(pre.handlesArr)):
             pixelDiff, ratioDiff, boundingBoxLen = calcHandleDiff(self.outputHandles, pre.handlesArr[i])
             if pixelDiff < tmpDiff:
                 tmpDiff = pixelDiff
                 handleIndex = i
-        self.refInd.set(handleIndex+1)
+        #self.refInd.set(handleIndex+1) # 詳細の参照画像を自由に選びたいときは消す
         self.updateRefImg()
         #newEye_TC = transferColor('output/'+self.textName.get()+'_wv_output.png', self.outputHandles, 'data_eyes/'+str(self.refInd.get()).zfill(3)+'.png', pre.handlesArr[self.refInd.get()-1])
         newEye_TC = transferColor('data_eyes_test/'+str(self.refInd.get()).zfill(3)+'.png', pre.handlesArr[self.refInd.get()-1], 'output/'+self.textName.get()+'_wv_output.png', self.outputHandles)
         cv2.imwrite('output/outputEyeImg.png', newEye_TC)
+        cv2.imwrite('output/detailedEyeImg.png', newEye_TC)
 
         self.outputCanvas2.delete(tkinter.ALL)
         url = 'output/outputEyeImg.png'
@@ -458,7 +492,15 @@ class Application(tkinter.Frame): #GUI
         self.outputCanvas2.create_image(64,48,image=self.outImg2)
 
         newEye_wv, newHandles_wv, newEyeMask_wv , _err= project_withVector(newEye_TC, self.outputHandles,contRate=self.contRate.get(),refs=self.refs)
+        #newEye_wv = cv2.bilateralFilter(newEye_wv, 3, 200, 100)
         cv2.imwrite('output/outputEyeImg.png', newEye_wv)
+        cv2.imwrite('output/reprojectedEyeImg.png', newEye_wv)
+        cv2.imwrite('temp_img/reprojectedEyeImg.png', newEye_wv)
+        cv2.imwrite('temp_img/eyeMask.png', newEyeMask_wv)
+
+        resultImg = np.append(self.normalizedSketch,newEye_wv,axis=1)
+        cv2.imwrite('temp_img/sketchAndResult.png', resultImg)
+
 
         self.outputCanvas3.delete(tkinter.ALL)
         url = 'output/outputEyeImg.png'
@@ -543,6 +585,7 @@ class Application(tkinter.Frame): #GUI
         pngImg = cv2.warpAffine(pngImg, afin_matrix, (640,480), borderValue = (255,255,255))
 
         sketch = cv2.resize(pngImg, (64,48))
+        self.normalizedSketch = sketch
         cv2.imwrite('temp_img/normalizedSketch.png', sketch)
         sketch = cv2.cvtColor(sketch, cv2.COLOR_BGR2GRAY)
         
@@ -563,7 +606,9 @@ class Application(tkinter.Frame): #GUI
             edgeD = np.array([edgeD])
             edgeL = np.array([edgeL])
 
-            handles = np.array([edgeR,edgeD,edgeL,np.array([[32.5,24.5]])])
+            if self.generateNum == 0:
+                self.sketcHhandles = np.array([edgeR,edgeD,edgeL,np.array([[32.5,24.5]])])
+            handles = self.sketcHhandles
         elif self.mode.get() == 1:
             truehand = pre.handlesArr[self.testInd.get()-1]
             self.handles = []
@@ -574,7 +619,29 @@ class Application(tkinter.Frame): #GUI
             self.handles = np.array(self.handles)
             handles = self.handles
 
-        newImgVec, newHandleVec = project_autoHandleGen_EM(sketch,handles)
+        self.bg = self.test_canvas.create_rectangle(-1000, -1000, 1000, 1000, fill = 'linen')
+        self.test_canvas.tag_lower(self.bg)
+        self.test_canvas.postscript(file='temp_img/out.ps', colormode='color')
+        psimage=Image.open('temp_img/out.ps')
+
+        psimage.save('temp_img/out.png')
+
+        pngImg = cv2.imread('temp_img/out.png')
+        print(pngImg.shape)
+        pngImg = pngImg[2:362, 2:482]
+        pngImg = cv2.resize(pngImg, (640,480))
+
+        dx = 325-self.eyeCenterPos[0]
+        dy = 245-self.eyeCenterPos[1]
+        afin_matrix = np.float32([[1,0,dx],[0,1,dy]])
+        pngImg = cv2.warpAffine(pngImg, afin_matrix, (640,480), borderValue = (230,240,250))
+
+        sketch_bg = cv2.resize(pngImg, (64,48))
+        self.normalizedSketch = sketch_bg
+        cv2.imwrite('temp_img/normalizedSketch.png', sketch_bg)
+        sketch_bg = cv2.cvtColor(sketch_bg, cv2.COLOR_BGR2GRAY)
+
+        newImgVec, newHandleVec = project_autoHandleGen_EM(sketch_bg,handles)
         #print("handleTest",newHandleVec, handles)
         newHandleVec = newHandleVec.reshape(13,1,2)
         newHandleVec = newHandleVec*10 - np.array([[dx, dy]])
@@ -589,6 +656,8 @@ class Application(tkinter.Frame): #GUI
         newImg = newImg.astype(np.uint8)
         #cv2.imshow("image", newImg)
         #cv2.waitKey()
+
+        self.generateNum += 1
 
 
 

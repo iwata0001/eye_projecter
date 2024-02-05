@@ -23,7 +23,7 @@ def blendPreview(eye, back, mask, center=(185, 144), k=1): #eye,maskは(48, 64, 
 
     return result
 
-def transferColor(pngURL_org, handles_org, pngURL_ref, handles_ref):
+def transferColor(pngURL_ref, handles_ref, pngURL_org, handles_org):
     orgImg = cv2.imread(pngURL_org)
     refImg = cv2.imread(pngURL_ref)
 
@@ -31,33 +31,31 @@ def transferColor(pngURL_org, handles_org, pngURL_ref, handles_ref):
     orgEyeMesh.setHandlesOrg(handles_org)
     orgEyeMesh.setHandlesDfm(pre.handlesAvg)
     orgEyeMesh.applyHandles()
-    orgImgNormalized = orgEyeMesh.deform()
+    orgImgNormalized = orgEyeMesh.deform(whiteback=True)
     cv2.imwrite('temp_img/detailingOrgNormalized.png', orgImgNormalized)
 
     refEyeMesh = mesh2(64,48, refImg)
     refEyeMesh.setHandlesOrg(handles_ref)
     refEyeMesh.setHandlesDfm(pre.handlesAvg)
     refEyeMesh.applyHandles()
-    refImgNormalized = refEyeMesh.deform()
+    refImgNormalized = refEyeMesh.deform(whiteback=True)
     cv2.imwrite('temp_img/detailingRefNormalized.png', refImgNormalized)
 
     orgHSV = cv2.cvtColor(orgImgNormalized,cv2.COLOR_BGR2HSV)
     refHSV = cv2.cvtColor(refImgNormalized,cv2.COLOR_BGR2HSV)
 
-    print(orgHSV[47][63])
-
     for i in range(48):
         for j in range(64):
-            orgHSV[i][j][0] = refHSV[i][j][0]
+            orgHSV[i][j][2] = refHSV[i][j][2]
             #orgHSV[i][j][1] = refHSV[i][j][1]
 
     rtnImgNormalized = cv2.cvtColor(orgHSV,cv2.COLOR_HSV2BGR)
 
     rtnEyeMesh = mesh2(64,48, rtnImgNormalized)
     rtnEyeMesh.setHandlesOrg(pre.handlesAvg)
-    rtnEyeMesh.setHandlesDfm(handles_ref)
+    rtnEyeMesh.setHandlesDfm(handles_org)
     rtnEyeMesh.applyHandles()
-    rtnImg = rtnEyeMesh.deform()
+    rtnImg = rtnEyeMesh.deform(whiteback=True)
 
     return rtnImg
 

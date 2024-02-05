@@ -19,6 +19,8 @@ from utlLib import isExeption
 # 分散共分散行列を求めるために、データを横に並べた行列を作る
 # データの平均を求めてデータから引く（平均を0にする）
 
+LabMode = False
+
 
 N = 109
 newImgs = []
@@ -152,6 +154,8 @@ for i in range(N):
     
     print(i+1)
     newImg_v1 = newImgs[i]
+    if LabMode:
+        newImg_v1 = cv2.cvtColor(newImg_v1, cv2.COLOR_BGR2LAB) # BGRからLab
     
     avgEye_v1 += newImg_v1/1
     

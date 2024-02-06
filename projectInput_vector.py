@@ -139,8 +139,29 @@ def project_eigSpace2(texture, handles, contRate=0.95):
     newMesh.setHandlesDfm(newHandles)
     #newMesh.setHandlesDfm(handles)
     newMesh.applyHandles()
-
     newEye, newEyeMask = newMesh.deform(outputMask=True)
+
+    N = 5
+    newVectorN = newVector/vecCoeff
+    UOx, UOy, UIx, UIy, LOx, LOy, LIx, LIy, ppl = np.split(newVectorN, [N, 2*N, 3*N, 4*N, 5*N, 6*N, 7*N, 8*N])
+    pplXY = []
+    for i in range(int(len(ppl)/2)):
+        pplXY.append([ppl[2*i], ppl[2*i+1]])
+
+
+    vecdata = {}
+    vecdata['shapeUIx'] = UIx.tolist()
+    vecdata['shapeUIy'] = UIy.tolist()
+    vecdata['shapeUOx'] = UOx.tolist()
+    vecdata['shapeUOy'] = UOy.tolist()
+    vecdata['shapeLIx'] = LIx.tolist()
+    vecdata['shapeLIy'] = LIy.tolist()
+    vecdata['shapeLOx'] = LOx.tolist()
+    vecdata['shapeLOy'] = LOy.tolist()
+    vecdata['pplXY'] = pplXY
+    
+    with open('json_data/vec_eigSpace.json', 'w') as f:
+        json.dump(vecdata, f)
 
     return newEye, newHandles
 

@@ -476,8 +476,8 @@ class Application_EVGUI(tkinter.Frame):
 
         #tkinter.Spinbox(self, from_=1, to=100, increment=1, textvariable=self.refInd, command=self.updateRefItr)
         self.refItr = tkinter.IntVar()
-        self.refItr.set(110)
-        self.refItrScale = tkinter.Spinbox(self, from_=110, to=143, increment=1, textvariable=self.refItr, command=self.updateRefItr)
+        self.refItr.set(108)
+        self.refItrScale = tkinter.Spinbox(self, from_=108, to=143, increment=1, textvariable=self.refItr, command=self.updateRefItr)
         self.refItrScale.grid(row=6, column=3)
 
         self.outImgBtn = tkinter.Button(self, text='output', command=self.outputCurrentImg)
@@ -508,8 +508,8 @@ class Application_EVGUI(tkinter.Frame):
         for point in self.eye1.shapeO:
             createOvalEZ(self.test_canvas, point[0], point[1], self.pointRad, "blue", "handleO")
 
-        #self.loadURL('json_data/avg_v2.json')
         self.loadURL('json_data/avg_v2.json')
+        #self.loadURL('json_data/vec_eigSpace.json')
         
         sortDrawOrder(self.test_canvas, self.tagOrder)
 
@@ -841,19 +841,24 @@ class Application_EVGUI(tkinter.Frame):
         self.reloadPpl()
 
     def updateRefItr(self):
-        itr = str(self.refItr.get())
-        self.loadURL('test_result/json/test'+str(itr)+'.json')
-        print('test_result/json/test'+str(itr)+'.json')
+        if self.refItr.get() == 108:
+            self.loadURL('json_data/avg_v2.json')
+        elif self.refItr.get() == 109:
+            self.loadURL('json_data/vec_eigSpace.json')
+        else:
+            itr = str(self.refItr.get())
+            self.loadURL('test_result/json/test'+str(itr)+'.json')
+            print('test_result/json/test'+str(itr)+'.json')
 
-        i = int(self.refItr.get())
+            i = int(self.refItr.get())
 
-        if(i != 0):
-            ref = Image.open('data_eyes_test/' + str(itr).zfill(3) + '.png')
-            ref.putalpha(128)
-            ref = ref.resize((640, 480))
-            ref.save('temp_img/temp_ref.png')
-            self.touka = tkinter.PhotoImage(file='temp_img/temp_ref.png')
-            self.test_canvas.create_image(2,2,image=self.touka,anchor=tkinter.NW,tag="refImg")
+            if(i != 0):
+                ref = Image.open('data_eyes_test/' + str(itr).zfill(3) + '.png')
+                ref.putalpha(128)
+                ref = ref.resize((640, 480))
+                ref.save('temp_img/temp_ref.png')
+                self.touka = tkinter.PhotoImage(file='temp_img/temp_ref.png')
+                self.test_canvas.create_image(2,2,image=self.touka,anchor=tkinter.NW,tag="refImg")
 
     def toggleRefVisible(self):
         if self.refVisible:
@@ -919,9 +924,10 @@ class Application_EVGUI(tkinter.Frame):
         shapeLO = [data['shapeLOx'], data['shapeLOy']]
         shapeLI = [data['shapeLIx'], data['shapeLIy']]
         LOs = [0, 1]
-        for l in LOs: # 目頭側の下まつげを強制的に内側に
-            shapeLO[0][l] = shapeLI[0][l]+5
-            shapeLO[1][l] = shapeLI[1][l]-5
+        if True:
+            for l in LOs: # 目頭側の下まつげを強制的に内側に
+                shapeLO[0][l] = shapeLI[0][l]+5
+                shapeLO[1][l] = shapeLI[1][l]-5
         self.eye1 = eye(shapeUO, shapeUI, shapeLO, shapeLI, self.N)
         self.handlePpl = data['pplXY']
 

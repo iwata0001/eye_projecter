@@ -146,7 +146,17 @@ vecCoeff = 1
 eyeCoeff = 1
 
 datanum = 0
-if 0: # 平均など計算しなおすとき１に
+def makeDataAndAvg(): # データをまとめたものと平均を保存
+    img1 = cv2.imread('data_eyes/001.png')
+    avgEye_v1 = np.zeros_like(img1)*(1.0)
+    eyeDatas_v1 = []
+    handleDatas_v1 = []
+    vectorDatas_v1 = []
+    handCoeff_v1 = 150
+    vecCoeff = 1
+    eyeCoeff = 1
+    datanum = 0
+
     for j in range(N):
         path = 'json_data/' + str(j+1).zfill(3) + '_v2.json'
         if not os.path.isfile(path):
@@ -189,7 +199,6 @@ if 0: # 平均など計算しなおすとき１に
                 datanum = datanum+1
     print("datanum",datanum)
 
-
     eyeDatas_v1a = np.array(eyeDatas_v1)
     np.save('100eyeDatas_v1a', eyeDatas_v1a)
     #print(eyeDatas_v1a.shape)
@@ -197,10 +206,23 @@ if 0: # 平均など計算しなおすとき１に
     avgdata_v1 = np.mean(eyeDatas_v1a, axis=0)
     np.save('100avgdata_v1', avgdata_v1)
     #print(avgdata_v1.shape)
+path = '100eyeDatas_v1a.npy'
+if not os.path.isfile(path):
+    print("データ再計算")
+    makeDataAndAvg()
 
 eyeDatas_v1a = np.load('100eyeDatas_v1a.npy')
 avgdata_v1 = np.load('100avgdata_v1.npy')
 eyeDatasCenter_v1a = eyeDatas_v1a - avgdata_v1
+def calcDataEig(): # データの固有値を計算して保存
+    covMat = np.cov(eyeDatasCenter_v1a.T)
+    eyeDatasEig = np.linalg.eig(covMat)
+    np.save('saves/100data_eigval', eyeDatasEig[0].real)
+    np.save('saves/100data_eigvec', eyeDatasEig[1].real.T)
+path = 'saves/100data_eigval.npy'
+if not os.path.isfile(path):
+    print("データ固有値再計算")
+    calcDataEig()
 
 # ランダムに拡大したデータを追加
 """

@@ -21,7 +21,7 @@ import DmeshLib as DMesh
 from utlLib import transferColor, createOvalEZ, blendPreview, calcHandleDiff
 import preData as pre
 import preData2 as pre2
-from preData3 import project_autoHandleGen_EM, findEdge
+from projectHandle import project_autoHandleGen_EM, findEdge
 
 def colorCord(R,G,B): #整数値RGBをカラーコードに
     return('#'+ format(R, '02x')+ format(G, '02x')+ format(B, '02x'))

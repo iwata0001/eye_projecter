@@ -7,8 +7,8 @@ from mesh2Lib import mesh2
 # test2
 
 def main():
-    eigVal = np.load('saves/100data_eigval.npy')
-    eigVec = np.load('saves/100data_eigvec.npy')
+    eigVal = np.load('saves/10000data_eigval.npy')
+    eigVec = np.load('saves/10000data_eigvec.npy')
     print("eigvalshape",eigVal.shape)
 
     avgImgV, avgHandlesV, avgVectorV = np.split(preData2.avgdata_v1, [48*64*3, 48*64*3+13*1*2])
@@ -22,11 +22,15 @@ def main():
 
     eigNums = [0, 1, 5, 29, 69]
     eigNums = range(100)
-    c1 = 3
+    c1 = 2
     MPdiffs = []
+
+    path_w = 'stds.txt'
+    s = ''
 
     for eigNum in eigNums:
         c2 = np.sqrt(eigVal[eigNum])
+        s = s+str(c2)+'\t'
         # eigNum番目の固有値を足す
         dfmDataP = preData2.avgdata_v1 + c1*c2*eigVec[eigNum]
         dfmImgV, dfmHandlesV, dfmVectorV = np.split(dfmDataP, [48*64*3, 48*64*3+13*1*2])
@@ -87,6 +91,9 @@ def main():
         resultImg = np.append(resultImg,dfmImgP,axis=1)
         cv2.imwrite('C:/pics/eigVariation/variation'+str(eigNum)+'.png', resultImg)
     print(MPdiffs)
+
+    with open(path_w, mode='w') as f:
+        f.write(s)
 
 if __name__ == '__main__':
     main()

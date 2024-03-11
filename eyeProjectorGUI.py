@@ -16,7 +16,7 @@ import pywt
 import os
 from PIL import ImageTk, Image
 
-from projectInput_vector import project_withVector, project_eigSpace, project_eigSpace2
+from projectInput_vector import project_withVector, project_ridge, project_eigSpace2
 import DmeshLib as DMesh
 from utlLib import transferColor, createOvalEZ, blendPreview, calcHandleDiff
 import preData as pre
@@ -126,6 +126,11 @@ class Application(tkinter.Frame): #GUI
         self.contRate.set(0.95)
         self.contRateSelect = tkinter.Scale(self, label='contRate', from_=0.3, to=0.99, resolution=0.01, orient=tkinter.HORIZONTAL, variable=self.contRate)
         self.contRateSelect.grid(row=2, column=3)
+
+        self.ridgeAlpha = tkinter.DoubleVar()
+        self.ridgeAlpha.set(1)
+        self.ridgeAlphaSelect = tkinter.Scale(self, label='ridgeAlpha', from_=0, to=5, resolution=0.1, orient=tkinter.HORIZONTAL, variable=self.ridgeAlpha)
+        self.ridgeAlphaSelect.grid(row=2, column=4)
 
         self.refCanvas2 = tkinter.Canvas(self, bg='white', width=64, height=48)
         #self.refCanvas2.grid(row=3, column=4)
@@ -273,17 +278,23 @@ class Application(tkinter.Frame): #GUI
             conts = [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99]
             conts = []
             if self.mode.get() == 1:
-                newEye_wv, newHandles_wv, newEyeMask_wv , self.eyeErrors= project_withVector(pngImg, handles,testNumber=self.testInd.get()-1,outputErrors=True,contRate=self.contRate.get(), isSelectEig=True)
+                newEye_eigSpace, __nh, rawData_eigSpace = project_eigSpace2(pngImg, handles, contRate=self.contRate.get())
+                newEye_allEig, __newHandles_wv, __newEyeMask_wv , _err, rawData_allEig= project_withVector(pngImg, handles,testNumber=self.testInd.get()-1,contRate=self.contRate.get(),refs=self.refs,isSelectEig=False)
+                newEye_wv, newHandles_wv, newEyeMask_wv , self.eyeErrors, __rawData= project_withVector(pngImg, handles,testNumber=self.testInd.get()-1,outputErrors=True,contRate=self.contRate.get(), isSelectEig=True)
                 for cont in conts:
                     eye, handle, mask, _err = project_withVector(pngImg, handles,contRate=cont)
                     cv2.imwrite('output/contRateTest/'+self.textName.get()+str(cont)+'.png', eye)
             else:
-                newEye_eigSpace, __nh = project_eigSpace2(pngImg, handles, contRate=self.contRate.get())
-                newEye_allEig, __newHandles_wv, __newEyeMask_wv , _err= project_withVector(pngImg, handles,contRate=self.contRate.get(),refs=self.refs,isSelectEig=False)
-                newEye_wv, newHandles_wv, newEyeMask_wv , _err= project_withVector(pngImg, handles,contRate=self.contRate.get(),refs=self.refs,isSelectEig=True)
+                newEye_eigSpace, __nh, rawData_eigSpace = project_eigSpace2(pngImg, handles, contRate=self.contRate.get())
+                newEye_allEig, __newHandles_wv, __newEyeMask_wv , _err, rawData_allEig= project_withVector(pngImg, handles,contRate=self.contRate.get(),refs=self.refs,isSelectEig=False)
+                newEye_wv, newHandles_wv, newEyeMask_wv , _err, __rawData= project_withVector(pngImg, handles,contRate=self.contRate.get(),refs=self.refs,isSelectEig=True)
+                newEye_ridge, __nh, rawData_lasso = project_ridge(pngImg, handles, alpha=self.ridgeAlpha.get(), contRate=self.contRate.get())
+                #newEye_allEig, __newHandles_wv, __newEyeMask_wv , _err, rawData_allEig= project_withVector(pngImg, handles,contRate=self.contRate.get(),refs=self.refs,isSelectEig=False)
                 for cont in conts:
                     eye, handle, mask, _err = project_withVector(pngImg, handles,contRate=cont,refs=self.refs)
                     cv2.imwrite('output/contRateTest/'+self.textName.get()+str(cont)+'.png', eye)
+            rawdatadiff = rawData_lasso - rawData_allEig
+            print("rawDataDiff:",np.linalg.norm(rawdatadiff,ord=2)/np.linalg.norm(rawData_eigSpace,ord=2))
             self.outputHandles = newHandles_wv
 
             #cv2.imwrite('output/'+self.textName.get()+'_output.png', newEye)
@@ -291,6 +302,7 @@ class Application(tkinter.Frame): #GUI
             cv2.imwrite('output/'+self.textName.get()+'_wv_output.png', newEye_wv)
             cv2.imwrite('output/outputEyeImg.png', newEye_wv)
             cv2.imwrite('output/outputEyeImg_eigSpace.png', newEye_eigSpace)
+            cv2.imwrite('output/outputEyeImg_ridge.png', newEye_ridge)
             cv2.imwrite('output/outputEyeImg_allEig.png', newEye_allEig)
             cv2.imwrite('output/projectedSketch.png', newEye_wv)
             cv2.imwrite('temp_img/eyeMask.png', newEyeMask_wv)
@@ -316,7 +328,7 @@ class Application(tkinter.Frame): #GUI
             self.outputCanvas4.create_image(64,48,image=self.outImg_allEig)
 
             self.outputCanvas5.delete(tkinter.ALL)
-            url = 'output/outputEyeImg_eigSpace.png'
+            url = 'output/outputEyeImg_ridge.png'
             img = Image.open(url)
             img = img.resize((128,96))
             self.outImg_eigSpace = ImageTk.PhotoImage(img)
@@ -503,7 +515,7 @@ class Application(tkinter.Frame): #GUI
         self.outImg2 = ImageTk.PhotoImage(img)
         self.outputCanvas2.create_image(64,48,image=self.outImg2)
 
-        newEye_wv, newHandles_wv, newEyeMask_wv , _err= project_withVector(newEye_TC, self.outputHandles,contRate=self.contRate.get(),refs=self.refs)
+        newEye_wv, newHandles_wv, newEyeMask_wv , _err, _raw= project_withVector(newEye_TC, self.outputHandles,contRate=self.contRate.get(),refs=self.refs)
         #newEye_wv = cv2.bilateralFilter(newEye_wv, 3, 200, 100)
         cv2.imwrite('output/outputEyeImg.png', newEye_wv)
         cv2.imwrite('output/reprojectedEyeImg.png', newEye_wv)

@@ -5,6 +5,17 @@ import matplotlib.pyplot as plt
 from mesh2Lib import mesh2
 import preData as pre
 
+def gradientDescent(func, init, alpha, maxitr=1000, tol=1.0e-4):
+    x = init
+    for itr in range(maxitr):
+        if (np.abs(alpha*func(x)) < tol).all():
+            return x
+        x -= alpha*func(x)
+    print("Not converged.")
+    return x
+    #raise ValueError('Not converged.')
+
+
 def blendPreview(eye, back, mask, center=(185, 144), k=1): #eye,maskは(48, 64, 3) backは(300,300,3) cv2.imreadしてから引数にしてください
     mask = mask * 255
 
@@ -23,7 +34,7 @@ def blendPreview(eye, back, mask, center=(185, 144), k=1): #eye,maskは(48, 64, 
 
     return result
 
-def transferColor(pngURL_ref, handles_ref, pngURL_org, handles_org):
+def transferColor(pngURL_ref, handles_ref, pngURL_org, handles_org, isOutNormal = False):
     orgImg = cv2.imread(pngURL_org)
     refImg = cv2.imread(pngURL_ref)
 
@@ -57,7 +68,24 @@ def transferColor(pngURL_ref, handles_ref, pngURL_org, handles_org):
     rtnEyeMesh.applyHandles()
     rtnImg = rtnEyeMesh.deform(whiteback=True)
 
-    return rtnImg
+    if isOutNormal:
+        return rtnImgNormalized
+    else:
+        return rtnImg
+    
+def transferColor_normal(refImgNormalized, orgImgNormalized):
+
+    orgHSV = cv2.cvtColor(orgImgNormalized,cv2.COLOR_BGR2HSV)
+    refHSV = cv2.cvtColor(refImgNormalized,cv2.COLOR_BGR2HSV)
+
+    for i in range(48):
+        for j in range(64):
+            orgHSV[i][j][2] = refHSV[i][j][2]
+            #orgHSV[i][j][1] = refHSV[i][j][1]
+
+    rtnImgNormalized = cv2.cvtColor(orgHSV,cv2.COLOR_HSV2BGR)
+
+    return rtnImgNormalized
 
 def createOvalEZ(canvas, X, Y, rad, color, tag):
     canvas.create_oval(X-rad, Y-rad, X+rad, Y+rad, fill=color, tag = tag, width=0)

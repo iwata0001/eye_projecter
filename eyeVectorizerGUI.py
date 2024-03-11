@@ -495,7 +495,7 @@ class Application_EVGUI(tkinter.Frame):
         ref = ref.resize((640, 480))
         ref.save('temp_img/temp_ref.png')
         self.touka = tkinter.PhotoImage(file='temp_img/temp_ref.png')
-        self.test_canvas.create_image(2,2,image=self.touka,anchor=tkinter.NW,tag="refImg")
+        #self.test_canvas.create_image(2,2,image=self.touka,anchor=tkinter.NW,tag="refImg")
 
         self.eye1 = eye(shapeUO, shapeUI, shapeLO, shapeLI, self.N)
         self.polygon = self.eye1.getPolygon()
@@ -924,7 +924,7 @@ class Application_EVGUI(tkinter.Frame):
         shapeLO = [data['shapeLOx'], data['shapeLOy']]
         shapeLI = [data['shapeLIx'], data['shapeLIy']]
         LOs = [0, 1]
-        if True:
+        if False:
             for l in LOs: # 目頭側の下まつげを強制的に内側に
                 shapeLO[0][l] = shapeLI[0][l]+5
                 shapeLO[1][l] = shapeLI[1][l]-5

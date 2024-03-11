@@ -14,7 +14,7 @@ import json
 from mesh2Lib import mesh2
 import preData as pre
 import DmeshLib as DMesh
-from utlLib import isExeption
+from utlLib import isExeption, transferColor_normal
 
 # 分散共分散行列を求めるために、データを横に並べた行列を作る
 # データの平均を求めてデータから引く（平均を0にする）
@@ -146,51 +146,60 @@ vecCoeff = 1
 eyeCoeff = 1
 
 datanum = 0
-for i in range(N):
-    
-    path = 'json_data/' + str(i+1).zfill(3) + '_v2.json'
-    if not os.path.isfile(path):
-        continue
-    
-    print(i+1)
-    newImg_v1 = newImgs[i]
-    if LabMode:
-        newImg_v1 = cv2.cvtColor(newImg_v1, cv2.COLOR_BGR2LAB) # BGRからLab
-    
-    avgEye_v1 += newImg_v1/1
-    
-    eyeVec = newImg_v1.reshape(48*64*3) * eyeCoeff
-    
-    handleVec = pre.handlesArr[i].reshape(pre.H*1*2) * handCoeff_v1
+if 0: # 平均など計算しなおすとき１に
+    for j in range(N):
+        path = 'json_data/' + str(j+1).zfill(3) + '_v2.json'
+        if not os.path.isfile(path):
+            continue
+        for i in range(N):
+            if i == j:
+                path = 'json_data/' + str(i+1).zfill(3) + '_v2.json'
+                if (not os.path.isfile(path)):
+                    continue
+                
+                print(i+1)
+                newImg_v1 = transferColor_normal(newImgs[i], newImgs[j])
+                if LabMode:
+                    newImg_v1 = cv2.cvtColor(newImg_v1, cv2.COLOR_BGR2LAB) # BGRからLab
+                
+                avgEye_v1 += newImg_v1/1
+                
+                eyeVec = newImg_v1.reshape(48*64*3) * eyeCoeff
+                
+                handleVec = pre.handlesArr[j].reshape(pre.H*1*2) * handCoeff_v1
 
-    vecdata = None
-    with open('json_data/'+str(i+1).zfill(3)+'_v2.json') as f:
-        vecdata = json.load(f)
-    vectorVec = vecdata['shapeUOx']+ vecdata['shapeUOy']+ vecdata['shapeUIx']+ vecdata['shapeUIy']+ vecdata['shapeLOx']+ vecdata['shapeLOy']+ vecdata['shapeLIx']+ vecdata['shapeLIy']
-    for j in range(len(vecdata['pplXY'])):
-        vectorVec = vectorVec + vecdata['pplXY'][j]
+                vecdata = None
+                with open('json_data/'+str(j+1).zfill(3)+'_v2.json') as f:
+                    vecdata = json.load(f)
+                vectorVec = vecdata['shapeUOx']+ vecdata['shapeUOy']+ vecdata['shapeUIx']+ vecdata['shapeUIy']+ vecdata['shapeLOx']+ vecdata['shapeLOy']+ vecdata['shapeLIx']+ vecdata['shapeLIy']
+                for k in range(len(vecdata['pplXY'])):
+                    vectorVec = vectorVec + vecdata['pplXY'][k]
 
-    vectorVec = np.array(vectorVec)
-    vectorVec = vectorVec * vecCoeff
-    
-    eyeData_v1 = np.append(eyeVec, handleVec)
-    eyeData_v1 = np.append(eyeData_v1, vectorVec)
+                vectorVec = np.array(vectorVec)
+                vectorVec = vectorVec * vecCoeff
+                
+                eyeData_v1 = np.append(eyeVec, handleVec)
+                eyeData_v1 = np.append(eyeData_v1, vectorVec)
 
-    print(eyeVec.shape, handleVec.shape, vectorVec.shape)
-    
-    eyeDatas_v1.append(eyeData_v1)
-    handleDatas_v1.append(handleVec)
+                print(eyeVec.shape, handleVec.shape, vectorVec.shape)
+                
+                eyeDatas_v1.append(eyeData_v1)
+                handleDatas_v1.append(handleVec)
 
-    datanum = datanum+1
-print("datanum",datanum)
+                datanum = datanum+1
+    print("datanum",datanum)
 
 
-eyeDatas_v1a = np.array(eyeDatas_v1)
-#print(eyeDatas_v1a.shape)
+    eyeDatas_v1a = np.array(eyeDatas_v1)
+    np.save('100eyeDatas_v1a', eyeDatas_v1a)
+    #print(eyeDatas_v1a.shape)
 
-avgdata_v1 = np.mean(eyeDatas_v1a, axis=0)
-#print(avgdata_v1.shape)
+    avgdata_v1 = np.mean(eyeDatas_v1a, axis=0)
+    np.save('100avgdata_v1', avgdata_v1)
+    #print(avgdata_v1.shape)
 
+eyeDatas_v1a = np.load('100eyeDatas_v1a.npy')
+avgdata_v1 = np.load('100avgdata_v1.npy')
 eyeDatasCenter_v1a = eyeDatas_v1a - avgdata_v1
 
 # ランダムに拡大したデータを追加

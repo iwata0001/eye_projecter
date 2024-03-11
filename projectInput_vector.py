@@ -18,7 +18,6 @@ import preData as pre
 import preData2 as pre2
 import DmeshLib as DMesh
 from utlLib import calcHandleDiff,gradientDescent
-import lasso
 
 # 主成分の変化による画像の変化量 i番めの主成分が+-に振れたときに画像がどれくらい変化するかを示す
 MPdiffs = [12532.252, 5648.708, 5056.236, 3802.8079, 2766.4272, 5852.853, 3787.906, 3973.0425, 3225.1687, 2532.366, 3392.5527, 2676.435, 2152.957, 3320.0884, 2275.8564, 2331.2412, 2525.0254, 2117.9512, 1736.1089, 1977.7578, 1823.0757, 1475.5413, 1559.0629, 1340.4797, 1418.5654, 983.4246, 1375.1382, 1186.6836, 1164.0645, 1151.7808, 1333.0532, 1057.6473, 993.62213, 930.4961, 1089.5468, 1109.5305, 978.5346, 963.71313, 1084.7765, 941.3655, 841.4113, 991.9471, 835.6237, 981.64404, 1017.64777, 879.37195, 975.25024, 823.7585, 1024.5712, 839.90356, 780.5626, 788.0761, 714.30316, 766.477, 713.1704, 720.0049, 677.66956, 712.28925, 664.97516, 681.1755, 561.4161, 671.5043, 633.45166, 600.64465, 644.67975, 585.8285, 643.76624, 541.5801, 649.7792, 517.7702, 538.6353, 587.26056, 572.3504, 518.7032, 492.10364, 540.3536, 547.58746, 566.7389, 466.06546, 494.00708, 529.57153, 443.5617, 468.54028, 486.79666, 431.39658, 441.53595, 458.9902, 419.60577, 483.81607, 383.45404, 407.81735, 384.3579, 552.59296, 427.91705, 442.94922, 435.564, 337.36627, 364.6135, 391.67587, 5.7445626]
@@ -257,102 +256,6 @@ def project_eigSpace(texture, handles, contRate=0.95):
     newEye, newEyeMask = newMesh.deform(outputMask=True)
 
     return newEye, newHandles
-
-def project_lasso(texture, handles, contRate=0.95):
-    #累積寄与率がcontRateになるまで固有ベクトルを並べる
-    temp = 0
-    D = 0
-
-    for n in range(len(eigVal)):
-        temp += eigVal[indices[n]]
-        if temp / eigValSum > contRate:
-            D = n
-            break
-    print("model dimension:", D)
-    #print("contRate:",temp / eigValSum)
-
-    A = []
-    for n in range(D):
-        A.append(eigVec[indices[n]])
-
-    # 並べた固有ベクトルで張られる空間に点を正射影する行列Pを求める
-    A = np.array(A)
-    A = A.T
-    Q = A @ np.linalg.inv(A.T @ A) @ A.T - np.identity(9290)
-
-    #print(A.shape, Q.shape)
-
-    Qi, Qj = np.split(Q,[48*64*3+13*1*2],axis=1)
-
-    tex = texture
-    eyeMesh = mesh2(64,48, tex)
-    eyeMesh.setHandlesOrg(handles)
-    eyeMesh.setHandlesDfm(pre.handlesAvg)
-    eyeMesh.applyHandles()
-    img, imgMask= eyeMesh.deform(outputMask=True)
-
-    avgImgData, avgHandleData, avgVectorData = np.split(pre2.avgdata_v1, [48*64*3, 48*64*3+13*1*2])
-
-    eyeVec = img.reshape(48*64*3) * eyeCoeff - avgImgData
-    handleVec = handles.reshape(pre.H*1*2) * handCoeff - avgHandleData
-    knownVec = np.append(eyeVec, handleVec)
-
-    start = time.time()
-    beta = Qi @ knownVec * (-1)
-
-    newVectorVec = lasso.solve_lasso(Qj, beta, 0.00001, maxiter=30000)
-
-    completeVec = np.append(knownVec, newVectorVec)
-
-    c = np.linalg.inv(A.T @ A) @ A.T @ completeVec
-
-    newDataVec = A @ c
-
-    end = time.time()
-    print("project_lasso time:",end-start)
-    #print(newDataVec.shape)
-
-    newDataVec = newDataVec+pre2.avgdata_v1
-    newImg, newHandles, newVector = np.split(newDataVec, [48*64*3, 48*64*3+13*1*2])
-
-    newImg = newImg / eyeCoeff
-    newImg = newImg.reshape(48,64,3)
-    newImg = np.clip(newImg, 0, 255)
-    newImg = newImg.astype(np.uint8)
-
-    newHandles = newHandles / handCoeff
-    newHandles = newHandles.reshape(pre.H,1,2)
-
-    newMesh = mesh2(64,48, newImg)
-    newMesh.setHandlesOrg(pre.handlesAvg)
-    newMesh.setHandlesDfm(newHandles)
-    #newMesh.setHandlesDfm(handles)
-    newMesh.applyHandles()
-    newEye, newEyeMask = newMesh.deform(outputMask=True)
-
-    N = 5
-    newVectorN = newVector/vecCoeff
-    UOx, UOy, UIx, UIy, LOx, LOy, LIx, LIy, ppl = np.split(newVectorN, [N, 2*N, 3*N, 4*N, 5*N, 6*N, 7*N, 8*N])
-    pplXY = []
-    for i in range(int(len(ppl)/2)):
-        pplXY.append([ppl[2*i], ppl[2*i+1]])
-
-
-    vecdata = {}
-    vecdata['shapeUIx'] = UIx.tolist()
-    vecdata['shapeUIy'] = UIy.tolist()
-    vecdata['shapeUOx'] = UOx.tolist()
-    vecdata['shapeUOy'] = UOy.tolist()
-    vecdata['shapeLIx'] = LIx.tolist()
-    vecdata['shapeLIy'] = LIy.tolist()
-    vecdata['shapeLOx'] = LOx.tolist()
-    vecdata['shapeLOy'] = LOy.tolist()
-    vecdata['pplXY'] = pplXY
-    
-    with open('json_data/vec_lasso.json', 'w') as f:
-        json.dump(vecdata, f)
-
-    return newEye, newHandles, newVector
 
 def project_ridge(texture, handles, alpha=1, contRate=0.95):
     #累積寄与率がcontRateになるまで固有ベクトルを並べる
